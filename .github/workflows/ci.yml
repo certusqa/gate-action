@@ -155,3 +155,39 @@ jobs:
           [ "${{ steps.refused.outcome }}" = "success" ] || { echo "::error::a refused upload failed the step"; exit 1; }
           [ -z "${{ steps.refused.outputs.run-id }}" ] || { echo "::error::run-id set on a refused upload"; exit 1; }
           echo "ok: refusal was a warning"
+
+  # Dogfood: upload the mixed-fixture run to the real CertusQA platform when
+  # the repository has a CERTUSQA_API_KEY secret. Skips cleanly when it does
+  # not (forks, or before the key exists). The verdict is report-only and the
+  # job never fails on an upload problem — that is the action's own contract.
+  dogfood-upload:
+    name: Dogfood (upload to app.certusqa.com)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Is a platform key configured?
+        id: key
+        env:
+          KEY: ${{ secrets.CERTUSQA_API_KEY }}
+        run: echo "present=$([ -n "$KEY" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+      - name: Stage the fixture as a Playwright report
+        if: steps.key.outputs.present == 'true'
+        run: mkdir -p work/test-results && cp test/fixtures/results-mixed.json work/test-results/results.json
+      - name: Run the action with the platform key
+        if: steps.key.outputs.present == 'true'
+        id: gate
+        uses: ./
+        with:
+          working-directory: work
+          artifact-name: dogfood-gate
+          api-key: ${{ secrets.CERTUSQA_API_KEY }}
+      - name: Report
+        if: steps.key.outputs.present == 'true'
+        run: |
+          echo "verdict=${{ steps.gate.outputs.verdict }} run-id=${{ steps.gate.outputs.run-id }}"
+          echo "${{ steps.gate.outputs.run-url }}"
+      - name: No key — skipped
+        if: steps.key.outputs.present != 'true'
+        run: echo "CERTUSQA_API_KEY is not set on this repository; nothing uploaded."
