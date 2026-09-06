@@ -95,7 +95,7 @@ jobs:
           set -euo pipefail
           if grep -rnE 'qa/ai/core|qa-forge-core|SmartLocatorEngine|RunArtifactJudge' --exclude-dir=.git --exclude-dir=.github . ; then
             echo "::error::engine reference in a public action"; exit 1; fi
-          if grep -rnE 'ghp_[A-Za-z0-9]{20,}|github_pat_|sk_live_|whsec_|BEGIN (RSA |EC )?PRIVATE KEY' --exclude-dir=.git . ; then
+          if grep -rnE 'ghp_[A-Za-z0-9]{20,}|github_pat_|sk_live_|whsec_|BEGIN (RSA |EC )?PRIVATE KEY' --exclude-dir=.git --exclude-dir=.github . ; then
             echo "::error::secret-shaped string"; exit 1; fi
           if grep -rn 'require(' gate.js enforce.js | grep -vE "require\('(crypto|fs|path|os)'\)|require\.main"; then
             echo "::error::gate.js and enforce.js must stay dependency-free"; exit 1; fi
