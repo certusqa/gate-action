@@ -13,8 +13,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
       - run: node --test
@@ -39,7 +39,7 @@ jobs:
           - { name: corrupt, fixture: results-corrupt.json, verdict: INSUFFICIENT_EVIDENCE, failed: "", flaky: "" }
           - { name: absent, fixture: "", verdict: INSUFFICIENT_EVIDENCE, failed: "", flaky: "" }
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Stage fixture as a Playwright report
         run: |
           mkdir -p work/test-results
@@ -68,7 +68,7 @@ jobs:
     name: Self-test (enforce blocks a failing run)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: mkdir -p work/test-results && cp test/fixtures/results-mixed.json work/test-results/results.json
       - name: Run the action in enforce mode (expected to fail)
         id: gate
@@ -92,7 +92,7 @@ jobs:
     name: Boundary
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: |
           set -euo pipefail
           if grep -rnE 'qa/ai/core|qa-forge-core|SmartLocatorEngine|RunArtifactJudge' --exclude-dir=.git --exclude-dir=.github . ; then
@@ -114,8 +114,8 @@ jobs:
     env:
       STUB_SECRET: cqa_live_selftestselftestselftestselftestselft
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
       - name: Start stub platform
@@ -167,7 +167,7 @@ jobs:
     timeout-minutes: 5
     if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Is a platform key configured?
         id: key
         env:
