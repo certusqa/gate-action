@@ -3,6 +3,7 @@ description: >-
   Turn a Playwright JSON report into a pre-deploy verdict you can prove: CLEAR_TO_DEPLOY,
   REVIEW_ARTIFACTS, BLOCK_DEPLOY or INSUFFICIENT_EVIDENCE, with a Proof Artifact per failure,
   a step summary and outputs. Report-only by default; nothing is blocked until you say so.
+  Optionally uploads the run to the CertusQA platform when an api-key is given.
 author: CertusQA
 branding:
   icon: shield
@@ -39,6 +40,17 @@ inputs:
     description: Directory the paths above are relative to.
     required: false
     default: "."
+  api-key:
+    description: >-
+      Optional CertusQA platform API key (cqa_live_…). When set, the run — gate.json and its
+      Proof Artifacts, nothing else — is signed and uploaded to the CertusQA platform after the
+      evidence is written. Pass it from a secret. Unset means no network call at all.
+    required: false
+    default: ""
+  api-url:
+    description: Platform ingestion endpoint. Only change this for a self-hosted or test platform.
+    required: false
+    default: https://app.certusqa.com/api/v1/runs
 
 outputs:
   verdict:
@@ -62,6 +74,12 @@ outputs:
   output-dir:
     description: Absolute path of the directory holding gate.json, summary.md and proof/
     value: ${{ steps.gate.outputs.output-dir }}
+  run-id:
+    description: Platform run id when api-key was set and the upload succeeded; empty otherwise
+    value: ${{ steps.gate.outputs.run-id }}
+  run-url:
+    description: Platform run URL when api-key was set and the upload succeeded; empty otherwise
+    value: ${{ steps.gate.outputs.run-url }}
 
 runs:
   using: composite
@@ -79,6 +97,8 @@ runs:
         GATE_MODE: ${{ inputs.mode }}
         GATE_STRICT: ${{ inputs.strict }}
         GATE_OUTPUT_DIR: ${{ inputs.output-dir }}
+        GATE_API_KEY: ${{ inputs.api-key }}
+        GATE_API_URL: ${{ inputs.api-url }}
       run: node "${{ github.action_path }}/gate.js"
 
     - name: Upload gate evidence

@@ -97,6 +97,59 @@ jobs:
             echo "::error::engine reference in a public action"; exit 1; fi
           if grep -rnE 'ghp_[A-Za-z0-9]{20,}|github_pat_|sk_live_|whsec_|BEGIN (RSA |EC )?PRIVATE KEY' --exclude-dir=.git --exclude-dir=.github . ; then
             echo "::error::secret-shaped string"; exit 1; fi
-          if grep -rn 'require(' gate.js enforce.js | grep -vE "require\('(crypto|fs|path|os)'\)|require\.main"; then
-            echo "::error::gate.js and enforce.js must stay dependency-free"; exit 1; fi
+          if grep -rn 'require(' gate.js enforce.js upload.js | grep -vE "require\('(crypto|fs|path|os)'\)|require\('\./upload\.js'\)|require\.main"; then
+            echo "::error::gate.js, enforce.js and upload.js must stay dependency-free"; exit 1; fi
           echo "clean"
+
+  # The upload path against a stub that verifies the bearer and both signature
+  # headers with an independent node:crypto derivation, then answers like the
+  # real endpoint. Proves: the key never appears in logs, the request is signed
+  # correctly, outputs carry the run id, and a refusal is a warning not a failure.
+  upload-self-test:
+    name: Self-test (api-key upload)
+    runs-on: ubuntu-latest
+    env:
+      STUB_SECRET: cqa_live_selftestselftestselftestselftestselft
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Start stub platform
+        run: |
+          node test/stub-platform.js 8099 "$STUB_SECRET" 2> stub.log &
+          for i in $(seq 1 20); do grep -q listening stub.log && break; sleep 0.5; done
+          cat stub.log
+      - run: mkdir -p work/test-results && cp test/fixtures/results-mixed.json work/test-results/results.json
+      - name: Run the action with an api-key
+        id: gate
+        uses: ./
+        with:
+          working-directory: work
+          artifact-name: ""
+          api-key: ${{ env.STUB_SECRET }}
+          api-url: http://127.0.0.1:8099/api/v1/runs
+      - name: Assert upload happened, outputs set, key never printed
+        env:
+          RUN_ID: ${{ steps.gate.outputs.run-id }}
+          RUN_URL: ${{ steps.gate.outputs.run-url }}
+        run: |
+          set -euo pipefail
+          cat stub.log
+          grep -q 'accepted BLOCK_DEPLOY' stub.log
+          [ "$RUN_ID" = "run_stub0001" ] || { echo "::error::run-id=$RUN_ID"; exit 1; }
+          [ -n "$RUN_URL" ]
+          if grep -rq "$STUB_SECRET" work/certusqa-gate/; then echo "::error::secret written to evidence"; exit 1; fi
+          echo "ok: uploaded as $RUN_ID"
+      - name: A refused upload is a warning, not a failure
+        id: refused
+        uses: ./
+        with:
+          working-directory: work
+          artifact-name: ""
+          api-key: cqa_live_wrongkeywrongkeywrongkeywrongkeywrong
+          api-url: http://127.0.0.1:8099/api/v1/runs
+      - run: |
+          [ "${{ steps.refused.outcome }}" = "success" ] || { echo "::error::a refused upload failed the step"; exit 1; }
+          [ -z "${{ steps.refused.outputs.run-id }}" ] || { echo "::error::run-id set on a refused upload"; exit 1; }
+          echo "ok: refusal was a warning"

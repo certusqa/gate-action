@@ -59,10 +59,12 @@ is the hosted part.
 | `output-dir` | `certusqa-gate` | Where the evidence is written |
 | `artifact-name` | `certusqa-gate` | Workflow artifact name; empty string skips the upload |
 | `working-directory` | `.` | Base for the paths above |
+| `api-key` | *(empty)* | Optional CertusQA platform key (`cqa_live_…`, from a secret). When set, the run is signed and uploaded after the evidence is written. Unset means no network call at all |
+| `api-url` | `https://app.certusqa.com/api/v1/runs` | Only change for a self-hosted or test platform |
 
 ## Outputs
 
-`verdict`, `report-status`, `passed`, `failed`, `flaky`, `skipped`, `output-dir`.
+`verdict`, `report-status`, `passed`, `failed`, `flaky`, `skipped`, `output-dir`, and — when `api-key` is set and the upload succeeded — `run-id` and `run-url`.
 
 ```yaml
 - uses: certusqa/gate-action@v1
@@ -82,7 +84,29 @@ is the hosted part.
   sees the failing run too.
 - It does not decide *why* a test failed. It records; the judge classifies. That is the line
   between this free action and the CertusQA service.
-- It does not send anything anywhere. No network calls. Read the source; it is one file.
+- It does not send anything anywhere **unless you set `api-key`**. Without it there is no network
+  call; with it, exactly one POST of `gate.json` and `proof/*.json` to the platform, nothing else.
+  Read the source; it is three small files.
+
+## Uploading to the CertusQA platform (optional)
+
+```yaml
+- uses: certusqa/gate-action@v1
+  with:
+    api-key: ${{ secrets.CERTUSQA_API_KEY }}
+```
+
+With a key, the action signs the run and uploads it after the evidence is written: history,
+trends and the judge's classification then live on the platform. What is sent is exactly
+`gate.json` plus `proof/*.json` — test titles, file paths relative to your repo, sanitised error
+text, attempt statuses — with the GitHub run, commit and PR number as the reference. No source,
+no screenshots, no secrets.
+
+The secret never leaves the runner in the clear beyond the `Authorization` header to the
+platform: the request is signed with a key derived from it (HKDF-SHA256), and the platform
+stores only a hash. An upload that is refused or fails is a **warning**, never a failed step;
+the verdict and the files are the product, the upload is a copy. Idempotent per workflow run
+and attempt, so a re-run does not double-count.
 
 ## Example
 

@@ -325,7 +325,7 @@ function writeOutputs(result) {
   if (process.env.GITHUB_STEP_SUMMARY) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summaryMarkdown);
 }
 
-function main() {
+async function main() {
   const opts = readOptions(process.env);
   const result = run(opts, process.cwd());
   writeOutputs(result);
@@ -336,8 +336,28 @@ function main() {
       `) → ${path.relative(process.cwd(), result.outputDir)}/`,
   );
   if (result.gate.note) console.log(`certusqa-gate: ${result.gate.note}`);
+
+  // Optional, after the evidence is on disk: upload to the platform. Never
+  // fails the step — the verdict and the files above are the product; the
+  // upload is a copy of them. The key is read here and never logged.
+  const apiKey = String(process.env.GATE_API_KEY || '').trim();
+  let runId = '';
+  let runUrl = '';
+  if (apiKey) {
+    const { upload } = require('./upload.js');
+    const out = await upload({ outputDir: result.outputDir, apiKey, apiUrl: process.env.GATE_API_URL || undefined });
+    if (out.ok) {
+      runId = out.runId || '';
+      runUrl = out.url || '';
+      console.log(`certusqa-gate: uploaded as ${runId}${out.replayed ? ' (already recorded for this workflow run)' : ''}${out.sanitisedServerSide ? ' — the platform had to sanitise this payload; check what your reporter emits' : ''}`);
+      if (process.env.GITHUB_STEP_SUMMARY && runUrl) fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `\nRecorded on the CertusQA platform: ${runUrl}\n`);
+    } else {
+      console.log(`::warning title=CertusQA Gate upload::${out.warning}`);
+    }
+  }
+  if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `run-id=${runId}\nrun-url=${runUrl}\n`);
 }
 
 module.exports = { VERDICTS, readOptions, loadReport, sanitizeError, summarize, listMedia, decide, proofArtifact, renderSummary, run, writeOutputs };
 
-if (require.main === module) main();
+if (require.main === module) main().catch((err) => { console.error(`certusqa-gate: ${err && err.stack ? err.stack : err}`); process.exit(1); });
