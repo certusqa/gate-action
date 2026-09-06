@@ -1,0 +1,360 @@
+{
+  "config": {
+    "argv": [
+      "/opt/homebrew/Cellar/node/26.5.0/bin/node",
+      "node_modules/@playwright/test/cli.js",
+      "test"
+    ],
+    "configFile": "playwright.config.js",
+    "rootDir": "tests",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "test-results",
+        "repeatEach": 1,
+        "retries": 1,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "json",
+        {
+          "outputFile": "test-results/results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.61.1",
+    "workers": 1,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "sample.spec.js",
+      "file": "sample.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "checkout",
+          "file": "sample.spec.js",
+          "line": 3,
+          "column": 6,
+          "specs": [
+            {
+              "title": "total matches catalog",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 2,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-06T13:40:09.301Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "775aa06a839d2ee5676f-832eae42c40c5992442d",
+              "file": "sample.spec.js",
+              "line": 4,
+              "column": 3
+            },
+            {
+              "title": "price regression",
+              "ok": false,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 1,
+                      "error": {
+                        "message": "Error: displayed price\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"Rs. 5\u001b[7m0\u001b[27m0\"\u001b[39m\nReceived: \u001b[31m\"Rs. \u001b[7m2\u001b[27m50\"\u001b[39m",
+                        "stack": "Error: displayed price\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"Rs. 5\u001b[7m0\u001b[27m0\"\u001b[39m\nReceived: \u001b[31m\"Rs. \u001b[7m2\u001b[27m50\"\u001b[39m\n    at tests/sample.spec.js:5:79",
+                        "location": {
+                          "file": "tests/sample.spec.js",
+                          "column": 79,
+                          "line": 5
+                        },
+                        "snippet": "  3 | test.describe('checkout', () => {\n  4 |   test('total matches catalog', async () => { expect(1 + 1).toBe(2); });\n> 5 |   test('price regression', async () => { expect('Rs. 250', 'displayed price').toBe('Rs. 500'); });\n    |                                                                               ^\n  6 |   test('flaky login', async ({}, info) => {\n  7 |     const marker = '/tmp/pw-sample-flaky';\n  8 |     if (info.retry === 0) { fs.writeFileSync(marker, '1'); throw new Error('Timeout 30000ms exceeded waiting for locator(#login)'); }"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "tests/sample.spec.js",
+                            "column": 79,
+                            "line": 5
+                          },
+                          "message": "Error: displayed price\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"Rs. 5\u001b[7m0\u001b[27m0\"\u001b[39m\nReceived: \u001b[31m\"Rs. \u001b[7m2\u001b[27m50\"\u001b[39m\n\n  3 | test.describe('checkout', () => {\n  4 |   test('total matches catalog', async () => { expect(1 + 1).toBe(2); });\n> 5 |   test('price regression', async () => { expect('Rs. 250', 'displayed price').toBe('Rs. 500'); });\n    |                                                                               ^\n  6 |   test('flaky login', async ({}, info) => {\n  7 |     const marker = '/tmp/pw-sample-flaky';\n  8 |     if (info.retry === 0) { fs.writeFileSync(marker, '1'); throw new Error('Timeout 30000ms exceeded waiting for locator(#login)'); }\n    at tests/sample.spec.js:5:79"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-06T13:40:09.326Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "test-results/sample-checkout-price-regression/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "tests/sample.spec.js",
+                        "column": 79,
+                        "line": 5
+                      }
+                    },
+                    {
+                      "workerIndex": 1,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 4,
+                      "error": {
+                        "message": "Error: displayed price\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"Rs. 5\u001b[7m0\u001b[27m0\"\u001b[39m\nReceived: \u001b[31m\"Rs. \u001b[7m2\u001b[27m50\"\u001b[39m",
+                        "stack": "Error: displayed price\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"Rs. 5\u001b[7m0\u001b[27m0\"\u001b[39m\nReceived: \u001b[31m\"Rs. \u001b[7m2\u001b[27m50\"\u001b[39m\n    at tests/sample.spec.js:5:79",
+                        "location": {
+                          "file": "tests/sample.spec.js",
+                          "column": 79,
+                          "line": 5
+                        },
+                        "snippet": "  3 | test.describe('checkout', () => {\n  4 |   test('total matches catalog', async () => { expect(1 + 1).toBe(2); });\n> 5 |   test('price regression', async () => { expect('Rs. 250', 'displayed price').toBe('Rs. 500'); });\n    |                                                                               ^\n  6 |   test('flaky login', async ({}, info) => {\n  7 |     const marker = '/tmp/pw-sample-flaky';\n  8 |     if (info.retry === 0) { fs.writeFileSync(marker, '1'); throw new Error('Timeout 30000ms exceeded waiting for locator(#login)'); }"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "tests/sample.spec.js",
+                            "column": 79,
+                            "line": 5
+                          },
+                          "message": "Error: displayed price\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"Rs. 5\u001b[7m0\u001b[27m0\"\u001b[39m\nReceived: \u001b[31m\"Rs. \u001b[7m2\u001b[27m50\"\u001b[39m\n\n  3 | test.describe('checkout', () => {\n  4 |   test('total matches catalog', async () => { expect(1 + 1).toBe(2); });\n> 5 |   test('price regression', async () => { expect('Rs. 250', 'displayed price').toBe('Rs. 500'); });\n    |                                                                               ^\n  6 |   test('flaky login', async ({}, info) => {\n  7 |     const marker = '/tmp/pw-sample-flaky';\n  8 |     if (info.retry === 0) { fs.writeFileSync(marker, '1'); throw new Error('Timeout 30000ms exceeded waiting for locator(#login)'); }\n    at tests/sample.spec.js:5:79"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-09-06T13:40:09.518Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "test-results/sample-checkout-price-regression-retry1/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "tests/sample.spec.js",
+                        "column": 79,
+                        "line": 5
+                      }
+                    }
+                  ],
+                  "status": "unexpected"
+                }
+              ],
+              "id": "775aa06a839d2ee5676f-e564621074668f160315",
+              "file": "sample.spec.js",
+              "line": 5,
+              "column": 3
+            },
+            {
+              "title": "flaky login",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 2,
+                      "parallelIndex": 0,
+                      "status": "failed",
+                      "duration": 0,
+                      "error": {
+                        "message": "Error: Timeout 30000ms exceeded waiting for locator(#login)",
+                        "stack": "Error: Timeout 30000ms exceeded waiting for locator(#login)\n    at tests/sample.spec.js:8:66",
+                        "location": {
+                          "file": "tests/sample.spec.js",
+                          "column": 66,
+                          "line": 8
+                        },
+                        "snippet": "   6 |   test('flaky login', async ({}, info) => {\n   7 |     const marker = '/tmp/pw-sample-flaky';\n>  8 |     if (info.retry === 0) { fs.writeFileSync(marker, '1'); throw new Error('Timeout 30000ms exceeded waiting for locator(#login)'); }\n     |                                                                  ^\n   9 |   });\n  10 |   test.skip('skipped mobile flow', async () => {});\n  11 | });"
+                      },
+                      "errors": [
+                        {
+                          "location": {
+                            "file": "tests/sample.spec.js",
+                            "column": 66,
+                            "line": 8
+                          },
+                          "message": "Error: Timeout 30000ms exceeded waiting for locator(#login)\n\n   6 |   test('flaky login', async ({}, info) => {\n   7 |     const marker = '/tmp/pw-sample-flaky';\n>  8 |     if (info.retry === 0) { fs.writeFileSync(marker, '1'); throw new Error('Timeout 30000ms exceeded waiting for locator(#login)'); }\n     |                                                                  ^\n   9 |   });\n  10 |   test.skip('skipped mobile flow', async () => {});\n  11 | });\n    at tests/sample.spec.js:8:66"
+                        }
+                      ],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-06T13:40:09.725Z",
+                      "annotations": [],
+                      "attachments": [
+                        {
+                          "name": "error-context",
+                          "contentType": "text/markdown",
+                          "path": "test-results/sample-checkout-flaky-login/error-context.md"
+                        }
+                      ],
+                      "errorLocation": {
+                        "file": "tests/sample.spec.js",
+                        "column": 66,
+                        "line": 8
+                      }
+                    },
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 1,
+                      "startTime": "2026-09-06T13:40:09.903Z",
+                      "annotations": [],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "flaky"
+                }
+              ],
+              "id": "775aa06a839d2ee5676f-e6b67608071d21a63253",
+              "file": "sample.spec.js",
+              "line": 6,
+              "column": 3
+            },
+            {
+              "title": "skipped mobile flow",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 30000,
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "location": {
+                        "file": "tests/sample.spec.js",
+                        "line": 10,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "expectedStatus": "skipped",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 3,
+                      "parallelIndex": 0,
+                      "status": "skipped",
+                      "duration": 0,
+                      "errors": [],
+                      "stdout": [],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-09-06T13:40:09.915Z",
+                      "annotations": [
+                        {
+                          "type": "skip",
+                          "location": {
+                            "file": "tests/sample.spec.js",
+                            "line": 10,
+                            "column": 8
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "skipped"
+                }
+              ],
+              "id": "775aa06a839d2ee5676f-2c7e78fdde3be992c22c",
+              "file": "sample.spec.js",
+              "line": 10,
+              "column": 8
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-09-06T13:40:09.121Z",
+    "duration": 798.3670000000002,
+    "expected": 1,
+    "skipped": 1,
+    "unexpected": 1,
+    "flaky": 1
+  }
+}

@@ -1,0 +1,4 @@
+node_modules/
+test-results/
+certusqa-gate/
+.DS_Store

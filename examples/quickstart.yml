@@ -1,0 +1,30 @@
+name: Playwright + CertusQA Gate
+on: [pull_request, push]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+
+      # Keep going on failure: the gate needs to see the failing run.
+      - name: Playwright
+        run: npx playwright test
+        continue-on-error: true
+
+      - name: CertusQA Gate
+        id: gate
+        if: always()
+        uses: certusqa/gate-action@v1
+        with:
+          results: test-results/results.json
+          mode: report-only        # flip to enforce once you have read a few verdicts
+
+      - name: Verdict
+        if: always()
+        run: echo "CertusQA Gate says ${{ steps.gate.outputs.verdict }}"

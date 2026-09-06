@@ -1,0 +1,102 @@
+name: CI
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node --test
+      - name: Refuse an empty suite
+        run: |
+          set -euo pipefail
+          n=$(find test -name '*.test.js' | wc -l | tr -d ' ')
+          [ "$n" -ge 1 ] || { echo "::error::no test files found"; exit 1; }
+
+  # The action run on its own fixtures, one job per verdict. Each job asserts
+  # the outputs, and the enforce job proves the red path really goes red.
+  self-test:
+    name: Self-test (${{ matrix.case.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        case:
+          - { name: block, fixture: results-mixed.json, verdict: BLOCK_DEPLOY, failed: "1", flaky: "1" }
+          - { name: clear, fixture: results-all-pass.json, verdict: CLEAR_TO_DEPLOY, failed: "0", flaky: "0" }
+          - { name: review, fixture: results-flaky.json, verdict: REVIEW_ARTIFACTS, failed: "0", flaky: "1" }
+          - { name: corrupt, fixture: results-corrupt.json, verdict: INSUFFICIENT_EVIDENCE, failed: "", flaky: "" }
+          - { name: absent, fixture: "", verdict: INSUFFICIENT_EVIDENCE, failed: "", flaky: "" }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Stage fixture as a Playwright report
+        run: |
+          mkdir -p work/test-results
+          if [ -n "${{ matrix.case.fixture }}" ]; then cp "test/fixtures/${{ matrix.case.fixture }}" work/test-results/results.json; fi
+      - name: Run the action (report-only)
+        id: gate
+        uses: ./
+        with:
+          working-directory: work
+          artifact-name: gate-${{ matrix.case.name }}
+      - name: Assert outputs
+        env:
+          VERDICT: ${{ steps.gate.outputs.verdict }}
+          FAILED: ${{ steps.gate.outputs.failed }}
+          FLAKY: ${{ steps.gate.outputs.flaky }}
+        run: |
+          set -euo pipefail
+          [ "$VERDICT" = "${{ matrix.case.verdict }}" ] || { echo "::error::verdict $VERDICT, wanted ${{ matrix.case.verdict }}"; exit 1; }
+          [ "$FAILED" = "${{ matrix.case.failed }}" ] || { echo "::error::failed=$FAILED, wanted ${{ matrix.case.failed }}"; exit 1; }
+          [ "$FLAKY" = "${{ matrix.case.flaky }}" ] || { echo "::error::flaky=$FLAKY, wanted ${{ matrix.case.flaky }}"; exit 1; }
+          test -f work/certusqa-gate/gate.json
+          test -f work/certusqa-gate/summary.md
+          echo "ok: $VERDICT"
+
+  enforce-goes-red:
+    name: Self-test (enforce blocks a failing run)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: mkdir -p work/test-results && cp test/fixtures/results-mixed.json work/test-results/results.json
+      - name: Run the action in enforce mode (expected to fail)
+        id: gate
+        continue-on-error: true
+        uses: ./
+        with:
+          working-directory: work
+          mode: enforce
+          artifact-name: ""
+      - name: The job must have gone red, with the evidence already written
+        run: |
+          set -euo pipefail
+          [ "${{ steps.gate.outcome }}" = "failure" ] || { echo "::error::enforce mode did not fail on BLOCK_DEPLOY"; exit 1; }
+          test -f work/certusqa-gate/gate.json
+          grep -q '"verdict": "BLOCK_DEPLOY"' work/certusqa-gate/gate.json
+          echo "ok: enforce failed the step and gate.json exists"
+
+  # This is a public repository and a thin client. Nothing from the private
+  # engine may land here: no engine paths, no imports of it, no tokens.
+  boundary:
+    name: Boundary
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          set -euo pipefail
+          if grep -rnE 'qa/ai/core|qa-forge-core|SmartLocatorEngine|RunArtifactJudge' --exclude-dir=.git --exclude-dir=.github . ; then
+            echo "::error::engine reference in a public action"; exit 1; fi
+          if grep -rnE 'ghp_[A-Za-z0-9]{20,}|github_pat_|sk_live_|whsec_|BEGIN (RSA |EC )?PRIVATE KEY' --exclude-dir=.git . ; then
+            echo "::error::secret-shaped string"; exit 1; fi
+          if grep -rn 'require(' gate.js enforce.js | grep -vE "require\('(crypto|fs|path|os)'\)|require\.main"; then
+            echo "::error::gate.js and enforce.js must stay dependency-free"; exit 1; fi
+          echo "clean"

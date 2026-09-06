@@ -1,0 +1,99 @@
+name: CertusQA Gate
+description: >-
+  Turn a Playwright JSON report into a pre-deploy verdict you can prove: CLEAR_TO_DEPLOY,
+  REVIEW_ARTIFACTS, BLOCK_DEPLOY or INSUFFICIENT_EVIDENCE, with a Proof Artifact per failure,
+  a step summary and outputs. Report-only by default; nothing is blocked until you say so.
+author: CertusQA
+branding:
+  icon: shield
+  color: green
+
+inputs:
+  results:
+    description: Path to the Playwright JSON reporter output (reporter [["json", { outputFile }]]).
+    required: false
+    default: test-results/results.json
+  media-dir:
+    description: Directory scanned for failure media (png, webm, zip) to reference from Proof Artifacts.
+    required: false
+    default: test-results
+  mode:
+    description: >-
+      report-only (default) never fails the job; enforce fails the job on BLOCK_DEPLOY and
+      INSUFFICIENT_EVIDENCE. Start in report-only, read a few verdicts, then switch.
+    required: false
+    default: report-only
+  strict:
+    description: In enforce mode, also fail the job on REVIEW_ARTIFACTS (flaky tests or failure media).
+    required: false
+    default: "false"
+  output-dir:
+    description: Where gate.json, summary.md and proof/*.json are written.
+    required: false
+    default: certusqa-gate
+  artifact-name:
+    description: Name of the uploaded workflow artifact holding the output directory. Empty string skips the upload.
+    required: false
+    default: certusqa-gate
+  working-directory:
+    description: Directory the paths above are relative to.
+    required: false
+    default: "."
+
+outputs:
+  verdict:
+    description: CLEAR_TO_DEPLOY | REVIEW_ARTIFACTS | BLOCK_DEPLOY | INSUFFICIENT_EVIDENCE
+    value: ${{ steps.gate.outputs.verdict }}
+  report-status:
+    description: parsed | absent | unparseable
+    value: ${{ steps.gate.outputs.report-status }}
+  passed:
+    description: Passed test count (empty when the report could not be read)
+    value: ${{ steps.gate.outputs.passed }}
+  failed:
+    description: Failed test count
+    value: ${{ steps.gate.outputs.failed }}
+  flaky:
+    description: Tests that failed then passed on retry
+    value: ${{ steps.gate.outputs.flaky }}
+  skipped:
+    description: Skipped test count
+    value: ${{ steps.gate.outputs.skipped }}
+  output-dir:
+    description: Absolute path of the directory holding gate.json, summary.md and proof/
+    value: ${{ steps.gate.outputs.output-dir }}
+
+runs:
+  using: composite
+  steps:
+    # The verdict is computed first and never fails this step, so the artifact
+    # upload below always runs. Enforcement is the last step, on purpose: the
+    # evidence is saved before the job goes red.
+    - name: Compute verdict and Proof Artifacts
+      id: gate
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        GATE_RESULTS: ${{ inputs.results }}
+        GATE_MEDIA_DIR: ${{ inputs.media-dir }}
+        GATE_MODE: ${{ inputs.mode }}
+        GATE_STRICT: ${{ inputs.strict }}
+        GATE_OUTPUT_DIR: ${{ inputs.output-dir }}
+      run: node "${{ github.action_path }}/gate.js"
+
+    - name: Upload gate evidence
+      if: ${{ inputs.artifact-name != '' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ steps.gate.outputs.output-dir }}
+        if-no-files-found: warn
+        retention-days: 30
+
+    - name: Enforce
+      shell: bash
+      env:
+        GATE_MODE: ${{ inputs.mode }}
+        GATE_STRICT: ${{ inputs.strict }}
+        GATE_VERDICT: ${{ steps.gate.outputs.verdict }}
+      run: node "${{ github.action_path }}/enforce.js"
