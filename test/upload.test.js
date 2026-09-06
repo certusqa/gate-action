@@ -87,7 +87,11 @@ describe('upload against a stub platform', () => {
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
     url = `http://127.0.0.1:${server.address().port}/api/v1/runs`;
   });
-  after(() => server.close());
+  after(() => {
+    // fetch keeps its socket alive; close() alone would wait on it and hang the runner.
+    if (typeof server.closeAllConnections === 'function') server.closeAllConnections();
+    server.close();
+  });
 
   it('POSTs a signed, idempotent request and returns the run id and url', async () => {
     received = [];

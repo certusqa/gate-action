@@ -6,7 +6,7 @@
  * node:crypto derivation, then answers like the real ingestion endpoint.
  * Refuses anything else with the real error codes.
  *
- * Usage: node test/stub-platform.js <port> <secret>
+ * Usage: node tools/stub-platform.js <port> <secret>
  */
 const crypto = require('crypto');
 const http = require('http');

@@ -10,6 +10,7 @@ jobs:
   unit:
     name: Unit tests
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -108,6 +109,7 @@ jobs:
   upload-self-test:
     name: Self-test (api-key upload)
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     env:
       STUB_SECRET: cqa_live_selftestselftestselftestselftestselft
     steps:
@@ -117,7 +119,7 @@ jobs:
           node-version: 22
       - name: Start stub platform
         run: |
-          node test/stub-platform.js 8099 "$STUB_SECRET" 2> stub.log &
+          node tools/stub-platform.js 8099 "$STUB_SECRET" 2> stub.log &
           for i in $(seq 1 20); do grep -q listening stub.log && break; sleep 0.5; done
           cat stub.log
       - run: mkdir -p work/test-results && cp test/fixtures/results-mixed.json work/test-results/results.json
