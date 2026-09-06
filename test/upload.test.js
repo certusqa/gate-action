@@ -67,6 +67,20 @@ describe('payload', () => {
   });
 });
 
+describe('api-key normalisation — say what is wrong before sending', () => {
+  it('accepts a raw key, and one pasted with quotes or whitespace', () => {
+    assert.deepEqual(up.normaliseApiKey(SECRET), { ok: true, value: SECRET });
+    assert.deepEqual(up.normaliseApiKey(`  "${SECRET}"\n`), { ok: true, value: SECRET });
+    assert.deepEqual(up.normaliseApiKey(JSON.stringify({ key: { id: 'key_1' }, secret: SECRET, shown_once: true })), { ok: true, value: SECRET });
+  });
+  it('names the mistake for a key id, a JSON blob without a secret, or garbage', () => {
+    assert.match(up.normaliseApiKey('key_abc123').reason, /key id/);
+    assert.match(up.normaliseApiKey('{"foo":1}').reason, /JSON object/);
+    assert.match(up.normaliseApiKey('hunter2').reason, /does not look like a CertusQA key/);
+    assert.match(up.normaliseApiKey('').reason, /empty/);
+  });
+});
+
 describe('upload against a stub platform', () => {
   let server;
   let received = [];

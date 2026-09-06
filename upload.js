@@ -132,6 +132,28 @@ function readEvidence(outputDir) {
 }
 
 /**
+ * @param {unknown} raw the api-key input as given
+ * @returns {{ ok: true, value: string } | { ok: false, reason: string }}
+ */
+function normaliseApiKey(raw) {
+  let v = String(raw == null ? '' : raw).trim();
+  if (!v) return { ok: false, reason: 'api-key is empty' };
+  if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1).trim();
+  if (v.startsWith('{')) {
+    try {
+      const j = JSON.parse(v);
+      if (j && typeof j.secret === 'string') return normaliseApiKey(j.secret);
+    } catch {
+      /* fall through */
+    }
+    return { ok: false, reason: 'api-key looks like a JSON object; store only the "secret" value (cqa_live_…)' };
+  }
+  if (v.startsWith('key_')) return { ok: false, reason: 'api-key is a key id (key_…); the secret starts with cqa_live_ and is shown once when the key is minted' };
+  if (!/^cqa_live_[a-z0-9]{20,}$/.test(v)) return { ok: false, reason: `api-key does not look like a CertusQA key (expected cqa_live_… , got ${v.length} chars starting "${v.slice(0, 4)}")` };
+  return { ok: true, value: v };
+}
+
+/**
  * @param {{ outputDir: string, apiKey: string, apiUrl?: string, env?: Record<string, string|undefined>, fetchFn?: typeof fetch, nowSec?: number }} opts
  * @returns {Promise<{ ok: boolean, status?: number, runId?: string, url?: string, replayed?: boolean, warning?: string }>}
  */
@@ -141,12 +163,18 @@ async function upload(opts) {
   const apiUrl = opts.apiUrl || DEFAULT_URL;
   if (!fetchFn) return { ok: false, warning: 'fetch is not available in this Node runtime (need Node 18+)' };
 
+  // Be forgiving about how a secret was pasted (quotes, whitespace, a JSON
+  // reply, a key *id* instead of the secret) and say exactly what is wrong
+  // before spending a request on it.
+  const apiKey = normaliseApiKey(opts.apiKey);
+  if (!apiKey.ok) return { ok: false, warning: `not uploaded: ${apiKey.reason}` };
+
   const { gate, artifacts } = readEvidence(opts.outputDir);
   const { payload, reason } = buildPayload(gate, artifacts, env);
   if (!payload) return { ok: false, warning: `not uploaded: ${reason}` };
 
   const body = JSON.stringify(payload);
-  const headers = await signRequest(body, opts.apiKey, opts.nowSec);
+  const headers = await signRequest(body, apiKey.value, opts.nowSec);
   const idem = env.GITHUB_RUN_ID ? `gh-${env.GITHUB_RUN_ID}-${env.GITHUB_RUN_ATTEMPT || 1}-${env.GITHUB_JOB || 'job'}` : undefined;
   if (idem) headers['Idempotency-Key'] = idem;
 
@@ -169,4 +197,4 @@ async function upload(opts) {
   return { ok: false, status: res.status, warning: `upload refused: ${detail}` };
 }
 
-module.exports = { ACTION_VERSION, DEFAULT_URL, deriveHmacKey, hmacHex, signRequest, externalRefFrom, buildPayload, readEvidence, upload };
+module.exports = { ACTION_VERSION, DEFAULT_URL, deriveHmacKey, hmacHex, signRequest, externalRefFrom, buildPayload, readEvidence, normaliseApiKey, upload };
