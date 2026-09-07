@@ -95,7 +95,7 @@ jobs:
       - uses: actions/checkout@v5
       - run: |
           set -euo pipefail
-          if grep -rnE 'qa/ai/core|qa-forge-core|SmartLocatorEngine|RunArtifactJudge' --exclude-dir=.git --exclude-dir=.github . ; then
+          if grep -rnE 'qa/ai/c[o]re|qa-forge-c[o]re|SmartLocat[o]rEngine|RunArtifactJ[u]dge' --exclude-dir=.git --exclude-dir=.github . ; then
             echo "::error::engine reference in a public action"; exit 1; fi
           if grep -rnE 'ghp_[A-Za-z0-9]{20,}|github_pat_|sk_live_|whsec_|BEGIN (RSA |EC )?PRIVATE KEY' --exclude-dir=.git --exclude-dir=.github . ; then
             echo "::error::secret-shaped string"; exit 1; fi

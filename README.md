@@ -116,3 +116,14 @@ See [`examples/quickstart.yml`](examples/quickstart.yml).
 
 This repository runs the action on its own fixtures in CI, one job per verdict, and checks the
 outputs. If the badge is green, the four rows in the table above are true today.
+
+## Versioning
+
+`certusqa/gate-action@v1` is a moving tag that always points at the latest `v1.x.y` release, so a
+workflow pinned to `@v1` gets fixes without edits and never a breaking change. Pin to a full tag
+(`@v1.0.0`) or a commit SHA if you want nothing to move.
+
+## License
+
+MIT. See [LICENSE](LICENSE). The action is a thin client; the CertusQA engine and platform are
+separate, proprietary services.
