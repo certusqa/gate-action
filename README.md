@@ -13,11 +13,24 @@ it never blocks, until you switch it.
     mode: report-only                    # switch to enforce when you trust it
 ```
 
-Your `playwright.config` needs the JSON reporter:
+The action reads Playwright's JSON reporter. On Playwright 1.63 or newer, add it on the command
+line and leave your config alone:
+
+```yaml
+- run: npx playwright test --add-reporter json
+  env:
+    PLAYWRIGHT_JSON_OUTPUT_FILE: test-results/results.json
+```
+
+`--add-reporter` appends to the reporters your config already declares instead of replacing
+them. On older Playwright, declare the reporter in `playwright.config`:
 
 ```js
 reporter: [['list'], ['json', { outputFile: 'test-results/results.json' }]],
 ```
+
+If your config already has a JSON reporter, keep it and point `results` at its `outputFile`;
+the environment variable above overrides every JSON reporter's output path when set.
 
 ## The four verdicts
 
@@ -53,7 +66,7 @@ is the hosted part.
 | Input | Default | Meaning |
 |---|---|---|
 | `results` | `test-results/results.json` | Playwright JSON reporter output |
-| `media-dir` | `test-results` | Scanned for `png`, `webm`, `zip` failure media |
+| `media-dir` | `test-results` | Scanned for `png`, `webp`, `webm`, `zip` failure media |
 | `mode` | `report-only` | `report-only` never fails the job; `enforce` fails on `BLOCK_DEPLOY` and `INSUFFICIENT_EVIDENCE` |
 | `strict` | `false` | In enforce mode, also fail on `REVIEW_ARTIFACTS` |
 | `output-dir` | `certusqa-gate` | Where the evidence is written |

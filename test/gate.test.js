@@ -72,10 +72,13 @@ describe('decide — four verdicts, and a missing report is never green', () => 
     const { cwd, result } = runWith('results-all-pass.json');
     fs.mkdirSync(path.join(cwd, 'test-results', 'old-failure'), { recursive: true });
     fs.writeFileSync(path.join(cwd, 'test-results', 'old-failure', 'test-failed-1.png'), 'png');
+    // Playwright 1.62+ can write screenshots as WebP; a WebP failure shot must count as media too.
+    fs.writeFileSync(path.join(cwd, 'test-results', 'old-failure', 'test-failed-2.webp'), 'webp');
+    fs.writeFileSync(path.join(cwd, 'test-results', 'old-failure', 'notes.txt'), 'not media');
     const again = gate.run(gate.readOptions({ GATE_RESULTS: 'test-results/results.json', GATE_MEDIA_DIR: 'test-results' }), cwd);
     assert.equal(result.gate.verdict, 'CLEAR_TO_DEPLOY');
     assert.equal(again.gate.verdict, 'REVIEW_ARTIFACTS');
-    assert.deepEqual(again.gate.media, ['test-results/old-failure/test-failed-1.png']);
+    assert.deepEqual(again.gate.media.sort(), ['test-results/old-failure/test-failed-1.png', 'test-results/old-failure/test-failed-2.webp']);
   });
   it('INSUFFICIENT_EVIDENCE when the report is absent, corrupt, or has no tests', () => {
     assert.equal(runWith(null).gateJson.verdict, 'INSUFFICIENT_EVIDENCE');

@@ -23,7 +23,7 @@
  *
  * Environment (set by action.yml from the inputs):
  *   GATE_RESULTS     path to results.json          default test-results/results.json
- *   GATE_MEDIA_DIR   dir scanned for png/webm/zip  default test-results
+ *   GATE_MEDIA_DIR   dir scanned for png/webp/webm/zip  default test-results
  *   GATE_MODE        report-only | enforce         default report-only
  *   GATE_STRICT      "true" to make REVIEW block   default false
  *   GATE_OUTPUT_DIR  where to write                default certusqa-gate
@@ -145,7 +145,7 @@ function listMedia(dir, root) {
     for (const ent of fs.readdirSync(d, { withFileTypes: true })) {
       const full = path.join(d, ent.name);
       if (ent.isDirectory()) walk(full);
-      else if (/\.(png|webm|zip)$/i.test(ent.name)) out.push(path.relative(root, full));
+      else if (/\.(png|webp|webm|zip)$/i.test(ent.name)) out.push(path.relative(root, full));
     }
   })(dir);
   return out.sort();
@@ -268,7 +268,7 @@ function run(opts, cwd) {
 
   let note = null;
   if (loaded.status === 'absent') {
-    note = `No report at ${path.relative(cwd, resultsPath)}. Add reporter: [["json", { outputFile: "${opts.results}" }]] to playwright.config, or set the results input.`;
+    note = `No report at ${path.relative(cwd, resultsPath)}. Add reporter: [["json", { outputFile: "${opts.results}" }]] to playwright.config, run Playwright 1.63+ with --add-reporter json and PLAYWRIGHT_JSON_OUTPUT_FILE=${opts.results}, or set the results input.`;
   } else if (loaded.status === 'unparseable') {
     note = `Report at ${path.relative(cwd, resultsPath)} could not be parsed (${loaded.error}). A corrupt or half-written report is not a green run.`;
   } else if (summary && summary.total === 0) {

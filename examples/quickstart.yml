@@ -13,8 +13,12 @@ jobs:
       - run: npx playwright install --with-deps chromium
 
       # Keep going on failure: the gate needs to see the failing run.
+      # --add-reporter (Playwright 1.63+) adds the JSON reporter without editing playwright.config;
+      # on older Playwright declare ['json', { outputFile: 'test-results/results.json' }] there instead.
       - name: Playwright
-        run: npx playwright test
+        run: npx playwright test --add-reporter json
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_FILE: test-results/results.json
         continue-on-error: true
 
       - name: CertusQA Gate

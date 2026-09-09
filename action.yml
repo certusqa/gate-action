@@ -11,11 +11,11 @@ branding:
 
 inputs:
   results:
-    description: Path to the Playwright JSON reporter output (reporter [["json", { outputFile }]]).
+    description: Path to the Playwright JSON reporter output (`--add-reporter json` with PLAYWRIGHT_JSON_OUTPUT_FILE on Playwright 1.63+, or reporter [["json", { outputFile }]] in the config).
     required: false
     default: test-results/results.json
   media-dir:
-    description: Directory scanned for failure media (png, webm, zip) to reference from Proof Artifacts.
+    description: Directory scanned for failure media (png, webp, webm, zip) to reference from Proof Artifacts.
     required: false
     default: test-results
   mode:
