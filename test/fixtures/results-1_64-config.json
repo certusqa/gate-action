@@ -1,0 +1,68 @@
+{
+  "config": {
+    "version": "1.64.0",
+    "updateSnapshots": "missing",
+    "projects": [
+      {
+        "name": "chromium"
+      },
+      {
+        "name": "firefox"
+      },
+      {
+        "name": "webkit"
+      }
+    ],
+    "filteredProjects": [
+      {
+        "name": "chromium"
+      }
+    ],
+    "metadata": {
+      "actualWorkers": 1,
+      "shuffleSeed": 42
+    },
+    "argv": [
+      "/opt/homebrew/Cellar/node/26.5.0/bin/node",
+      "/Users/someone/project/node_modules/@playwright/test/cli.js",
+      "test",
+      "--shuffle",
+      "42"
+    ]
+  },
+  "suites": [
+    {
+      "title": "checkout.spec.js",
+      "file": "tests/checkout.spec.js",
+      "specs": [
+        {
+          "title": "retries once then passes",
+          "file": "tests/checkout.spec.js",
+          "line": 9,
+          "tests": [
+            {
+              "projectName": "chromium",
+              "status": "flaky",
+              "results": [
+                {
+                  "status": "failed",
+                  "duration": 500,
+                  "error": {
+                    "message": "flake"
+                  },
+                  "attachments": []
+                },
+                {
+                  "status": "passed",
+                  "duration": 400,
+                  "attachments": []
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "suites": []
+    }
+  ]
+}

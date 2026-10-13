@@ -96,6 +96,21 @@ function summarize(report) {
   const counts = { passed: 0, failed: 0, flaky: 0, skipped: 0 };
   /** @type {object[]} */
   const cases = [];
+  /*
+   * Titles of PASSING tests that carry a `*-actual.*` attachment.
+   *
+   * Playwright 1.64 made `--update-snapshots=missing` pass with no baseline on
+   * disk: the test writes `*-expected` and `*-actual` and reports `expected`.
+   * Nothing annotates it, so a suite can be all-green while some of its tests
+   * compared nothing and merely recorded a baseline for next time.
+   *
+   * Collected unconditionally here and only REPORTED when
+   * `config.updateSnapshots` is set, because without that field a `*-actual`
+   * attachment on a passing test proves nothing — and every report from an
+   * older Playwright lacks the field entirely.
+   */
+  /** @type {string[]} */
+  const baselineWritten = [];
 
   function walk(suite, trail) {
     const here = suite.title ? [...trail, suite.title] : trail;
@@ -122,7 +137,10 @@ function summarize(report) {
               .filter((pth) => typeof pth === 'string' && pth),
           ),
         };
-        if (status === 'expected') counts.passed += 1;
+        if (status === 'expected') {
+          counts.passed += 1;
+          if (entry.attachments.some((pth) => /-actual\.[^./\\]+$/i.test(pth))) baselineWritten.push(entry.title);
+        }
         else if (status === 'skipped') counts.skipped += 1;
         else if (status === 'flaky') {
           counts.flaky += 1;
@@ -138,7 +156,7 @@ function summarize(report) {
   }
   for (const s of report.suites || []) walk(s, []);
   const total = counts.passed + counts.failed + counts.flaky + counts.skipped;
-  return { ...counts, total, cases };
+  return { ...counts, total, cases, baselineWritten };
 }
 
 /**
@@ -163,9 +181,10 @@ function listMedia(dir, root) {
  * @param {{ status: string }} loaded
  * @param {{ failed: number, flaky: number, total: number }|null} summary
  * @param {string[]} failureMedia media referenced by a failed or flaky result
+ * @param {string[]} [baselineWritten] passing tests that wrote a baseline rather than comparing one
  * @returns {string}
  */
-function decide(loaded, summary, failureMedia) {
+function decide(loaded, summary, failureMedia, baselineWritten = []) {
   if (loaded.status !== 'parsed' || !summary) return 'INSUFFICIENT_EVIDENCE';
   if (summary.total === 0) return 'INSUFFICIENT_EVIDENCE';
   if (summary.failed > 0) return 'BLOCK_DEPLOY';
@@ -186,6 +205,11 @@ function decide(loaded, summary, failureMedia) {
    * what the gate means.
    */
   if (summary.flaky > 0 || failureMedia.length > 0) return 'REVIEW_ARTIFACTS';
+  // A test that wrote a baseline instead of comparing one did not fail, so
+  // BLOCK would be wrong — but it proved less than a green tick implies, and
+  // REVIEW_ARTIFACTS exits 0 in enforce mode unless the operator set strict.
+  // That is the right weight: a human decides.
+  if (baselineWritten.length > 0) return 'REVIEW_ARTIFACTS';
   return 'CLEAR_TO_DEPLOY';
 }
 
@@ -262,6 +286,15 @@ function renderSummary(gate, artifacts) {
     lines.push(`| ${s.passed} | ${s.failed} | ${s.flaky} | ${s.skipped} | ${s.total} |`);
     lines.push('');
   }
+  // Directly under the counts, because it qualifies them: a verdict that
+  // covered one browser must not read as though it covered three. Placed above
+  // the failure table so it cannot be skimmed past.
+  if (gate.projectsNotRun && gate.projectsNotRun.length) {
+    lines.push(
+      `**Configured, not run:** ${gate.projectsNotRun.join(', ')} — this verdict covers ${(gate.projectsRun || []).join(', ') || 'the default project'} only.`,
+      '',
+    );
+  }
   if (gate.note) lines.push(`> ${gate.note}`, '');
   if (artifacts.length) {
     lines.push('| Proof Artifact | Test | Attempts | Error |');
@@ -271,6 +304,23 @@ function renderSummary(gate, artifacts) {
       lines.push(`| \`${a.id}\` | ${e.test.title}${e.test.file ? ` (\`${e.test.file}${e.test.line ? `:${e.test.line}` : ''}\`)` : ''} | ${e.attempts.join(' → ')} | ${e.error ? e.error.replace(/\|/g, '\\|').slice(0, 160) : ''} |`);
     }
     lines.push('');
+  }
+  if (Number.isFinite(gate.shuffleSeed)) {
+    lines.push(`Test order was shuffled: re-run with \`--shuffle ${gate.shuffleSeed}\` to reproduce it (shuffle seed \`${gate.shuffleSeed}\`).`, '');
+  }
+  if (gate.baselineWritten && gate.baselineWritten.length) {
+    lines.push(
+      `### ${gate.baselineWritten.length} test(s) compared nothing`,
+      '',
+      gate.updateSnapshots
+        ? `The run used \`updateSnapshots: ${gate.updateSnapshots}\` (Playwright's default is \`missing\`), so a baseline that was not on disk is written rather than failed. These tests passed without comparing anything — they recorded a baseline for next time:`
+        : 'These tests passed carrying a `*-actual` attachment, which means a baseline was written rather than compared. They proved nothing about what they were meant to check:',
+      '',
+      ...gate.baselineWritten.map((t) => `- ${t}`),
+      '',
+      'Re-run them once the baselines are committed, or they will keep passing on their own output.',
+      '',
+    );
   }
   // Named apart on purpose: calling every file "failure media" is what made a
   // green run look like it needed review.
@@ -311,6 +361,32 @@ function referencedMedia(summary, media, cwd) {
 }
 
 /**
+ * Project names from a config list, dropping the unnamed default.
+ * @param {unknown} list
+ * @returns {string[]|null} null when the field is absent entirely
+ */
+function projectNames(list) {
+  if (!Array.isArray(list)) return null;
+  return list.map((p) => (p && typeof p.name === 'string' ? p.name : '')).filter(Boolean);
+}
+
+/**
+ * The shuffle seed, for reproducing a shuffled run.
+ *
+ * Read from `config.metadata.shuffleSeed`, which is where 1.64 hands it to
+ * reporters — not by parsing `config.argv`. argv carries the seed only when it
+ * was passed explicitly, and it also carries absolute runner paths, so it is
+ * never read into anything this action publishes.
+ *
+ * @param {object|null} config
+ * @returns {number|null}
+ */
+function shuffleSeedOf(config) {
+  const raw = config && config.metadata && config.metadata.shuffleSeed;
+  return Number.isFinite(raw) ? Number(raw) : null;
+}
+
+/**
  * @param {ReturnType<typeof readOptions>} opts
  * @param {string} cwd
  */
@@ -324,7 +400,43 @@ function run(opts, cwd) {
   const referenced = referencedMedia(summary, media, cwd);
   const failureMedia = media.filter((m) => referenced.has(m));
   const recordedMedia = media.filter((m) => !referenced.has(m));
-  const verdict = decide(loaded, summary, failureMedia);
+  /*
+   * `updateSnapshots` is CONTEXT, not the trigger.
+   *
+   * The first cut of this gated the finding on the mode being one of
+   * missing/all/changed — and every real report in test/fixtures has
+   * `updateSnapshots: "missing"` with no flag in its `argv`, on Playwright
+   * 1.61.1. It is the resolved DEFAULT the reporter serialises, not an opt-in,
+   * so gating on it would have flagged every run ever.
+   *
+   * That also makes 1.64's change bigger than it reads: turning a missing
+   * baseline from a failure into a pass applies to everyone by default, not to
+   * people who passed a flag.
+   *
+   * The evidence is the attachment. A PASSING test carrying `*-actual.*` means
+   * a baseline was written rather than compared — Playwright attaches
+   * expected/actual on a comparison FAILURE, so on a pass it is the write.
+   * The mode is reported beside it because it explains why the test passed.
+   */
+  const config = (loaded.report && loaded.report.config) || null;
+  /*
+   * What the config declared, versus what the run actually executed.
+   * `filteredProjects` is new in 1.64; every earlier report lacks it, and
+   * absent must not read as "nothing ran" — hence null rather than [].
+   *
+   * Informational only. A `default: false` project is a legitimate choice, not
+   * a defect, so this never moves the verdict. But a CLEAR that covered one
+   * browser should not read as though it covered three.
+   */
+  const projectsConfigured = projectNames(config && config.projects) || [];
+  const projectsRun = projectNames(config && config.filteredProjects);
+  const projectsNotRun = projectsRun ? projectsConfigured.filter((n) => !projectsRun.includes(n)) : [];
+  const shuffleSeed = shuffleSeedOf(config);
+
+  const rawMode = loaded.report && loaded.report.config && loaded.report.config.updateSnapshots;
+  const updateSnapshots = typeof rawMode === 'string' && rawMode ? rawMode : null;
+  const baselineWritten = summary ? summary.baselineWritten : [];
+  const verdict = decide(loaded, summary, failureMedia, baselineWritten);
 
   let note = null;
   if (loaded.status === 'absent') {
@@ -363,6 +475,12 @@ function run(opts, cwd) {
     note,
     failures: summary ? summary.cases.map((c) => ({ title: c.title, file: c.file, line: c.line, status: c.status, attempts: c.attempts, error: c.error })) : [],
     proofArtifacts: artifacts.map((a) => a.id),
+    updateSnapshots,
+    baselineWritten,
+    projectsConfigured,
+    projectsRun,
+    projectsNotRun,
+    shuffleSeed,
     media,
     failureMedia,
     recordedMedia,

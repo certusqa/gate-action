@@ -1,0 +1,62 @@
+{
+  "config": {
+    "version": "1.64.0",
+    "updateSnapshots": "missing"
+  },
+  "suites": [
+    {
+      "title": "visual.spec.js",
+      "file": "tests/visual.spec.js",
+      "specs": [
+        {
+          "title": "home page looks right",
+          "file": "tests/visual.spec.js",
+          "line": 7,
+          "tests": [
+            {
+              "projectName": "chromium",
+              "status": "expected",
+              "results": [
+                {
+                  "status": "passed",
+                  "duration": 900,
+                  "attachments": [
+                    {
+                      "name": "home-expected.png",
+                      "contentType": "image/png",
+                      "path": "test-results/home-page-looks-right/home-expected.png"
+                    },
+                    {
+                      "name": "home-actual.png",
+                      "contentType": "image/png",
+                      "path": "test-results/home-page-looks-right/home-actual.png"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "pricing page looks right",
+          "file": "tests/visual.spec.js",
+          "line": 19,
+          "tests": [
+            {
+              "projectName": "chromium",
+              "status": "expected",
+              "results": [
+                {
+                  "status": "passed",
+                  "duration": 850,
+                  "attachments": []
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "suites": []
+    }
+  ]
+}

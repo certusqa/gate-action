@@ -244,3 +244,153 @@ describe('enforce — the only step that can go red', () => {
     assert.equal(decideExit({ mode: 'enforce' }).exitCode, 1);
   });
 });
+
+describe('G2 — a green run that compared nothing says so', () => {
+  /*
+   * Playwright 1.64 turned `--update-snapshots=missing` from red to green: with
+   * no baseline on disk the test now PASSES, writing `*-expected.png` and
+   * `*-actual.png` and setting `config.updateSnapshots`. Nothing annotates it.
+   *
+   * So a suite can report all-passed while some of its tests compared nothing
+   * at all — they recorded a baseline for next time. "Your CI was green, and
+   * these 3 tests compared nothing" is the finding a free gate should be known
+   * for, and the report already carries every field needed to say it.
+   */
+  it('names the tests that wrote a baseline instead of comparing one', () => {
+    const { gateJson } = runWith('results-baseline-written.json');
+    assert.equal(gateJson.updateSnapshots, 'missing', 'the mode is reported, from config');
+    assert.deepEqual(
+      gateJson.baselineWritten,
+      ['visual.spec.js \u203a home page looks right'],
+      'only the test with an -actual attachment, not its passing sibling',
+    );
+  });
+
+  it('REVIEWS rather than CLEARS, and does not block by default', () => {
+    // A test that compared nothing is not a failure, so BLOCK would be wrong.
+    // REVIEW_ARTIFACTS exits 0 in enforce mode unless strict is set — a human
+    // decides, which is the right weight for "this proved less than it looks".
+    const { gateJson } = runWith('results-baseline-written.json');
+    assert.equal(gateJson.verdict, 'REVIEW_ARTIFACTS');
+    assert.equal(gateJson.summary.failed, 0, 'nothing actually failed');
+    assert.equal(decideExit({ mode: 'enforce', verdict: gateJson.verdict }).exitCode, 0, 'does not block');
+    assert.equal(
+      decideExit({ mode: 'enforce', strict: 'true', verdict: gateJson.verdict }).exitCode,
+      1,
+      'and still blocks for anyone who opted into strict',
+    );
+  });
+
+  it('says it in the summary a human reads', () => {
+    const { cwd } = runWith('results-baseline-written.json');
+    const md = fs.readFileSync(path.join(cwd, 'certusqa-gate', 'summary.md'), 'utf8');
+    assert.match(md, /compared nothing/i);
+    assert.match(md, /home page looks right/);
+    assert.match(md, /updateSnapshots/);
+  });
+
+  it('the DEFAULT mode alone never flags a run — the attachment is the evidence', () => {
+    /*
+     * This is the regression test for the first cut of this feature, which
+     * gated the finding on `config.updateSnapshots` being missing/all/changed.
+     *
+     * Every real captured report in test/fixtures has
+     * `updateSnapshots: "missing"` with a bare `cli.js test` in its argv, on
+     * Playwright 1.61.1. It is the resolved DEFAULT, not an opt-in — so that
+     * version would have reported every green run as having compared nothing.
+     *
+     * It also makes 1.64's change more consequential than it reads: a missing
+     * baseline became a pass for EVERYONE, not for people who passed a flag.
+     */
+    const { gateJson } = runWith('results-all-pass.json');
+    assert.equal(gateJson.updateSnapshots, 'missing', 'the default really is set in a real report');
+    assert.deepEqual(gateJson.baselineWritten, [], 'and no test carries a -actual attachment');
+    assert.equal(gateJson.verdict, 'CLEAR_TO_DEPLOY', 'so a green run stays green');
+  });
+
+  it('reports the finding even when the mode field is absent', () => {
+    /*
+     * The mode is context, not the trigger. An older report may carry no such
+     * field at all, and a passing test with a `*-actual` attachment is still
+     * evidence that a baseline was written rather than compared — Playwright
+     * attaches expected/actual on a comparison FAILURE, so on a pass it is the
+     * write.
+     */
+    const { cwd } = runWith('results-baseline-written.json');
+    const file = path.join(cwd, 'test-results', 'results.json');
+    const rep = JSON.parse(fs.readFileSync(file, 'utf8'));
+    delete rep.config.updateSnapshots;
+    fs.writeFileSync(file, JSON.stringify(rep));
+    const again = gate.run(gate.readOptions({ GATE_RESULTS: 'test-results/results.json', GATE_MEDIA_DIR: 'test-results' }), cwd);
+    gate.writeOutputs(again);
+    const md = fs.readFileSync(path.join(cwd, 'certusqa-gate', 'summary.md'), 'utf8');
+    assert.doesNotMatch(md, /updateSnapshots: null/, 'the summary never prints a null mode');
+    assert.match(md, /baseline was written rather than compared/);
+    assert.equal(again.gate.updateSnapshots, null, 'no mode to report');
+    assert.deepEqual(again.gate.baselineWritten, ['visual.spec.js \u203a home page looks right']);
+    assert.equal(again.gate.verdict, 'REVIEW_ARTIFACTS', 'the finding stands on the attachment alone');
+  });
+});
+
+describe('G3/G4 — a CLEAR has to say what it cleared, and a shuffle has to be reproducible', () => {
+  it('G3 names the projects that were configured but not run', () => {
+    // `filteredProjects` is new in 1.64: what the run actually executed, where
+    // `projects` is what the config declared. A verdict that covers one
+    // browser should not read like it covered three.
+    const { gateJson } = runWith('results-1_64-config.json');
+    assert.deepEqual(gateJson.projectsConfigured, ['chromium', 'firefox', 'webkit']);
+    assert.deepEqual(gateJson.projectsRun, ['chromium']);
+    assert.deepEqual(gateJson.projectsNotRun, ['firefox', 'webkit']);
+  });
+
+  it('G3 is informational — it does not change the verdict', () => {
+    // `default: false` on a project is a legitimate choice, not a defect. This
+    // run is REVIEW because a test retried, and would be whatever it would be
+    // either way.
+    const { gateJson } = runWith('results-1_64-config.json');
+    assert.equal(gateJson.verdict, 'REVIEW_ARTIFACTS', 'the retry is the reason');
+    assert.equal(gateJson.summary.flaky, 1);
+  });
+
+  it('G3 stays quiet on a report with no filteredProjects', () => {
+    // Every pre-1.64 report lacks the field. Absent is not "nothing ran".
+    const { gateJson } = runWith('results-all-pass.json');
+    assert.deepEqual(gateJson.projectsNotRun, []);
+    assert.equal(gateJson.projectsRun, null, 'unknown, not an empty list');
+  });
+
+  it('G4 reports the shuffle seed so a shuffled run can be reproduced', () => {
+    const { gateJson } = runWith('results-1_64-config.json');
+    assert.equal(gateJson.shuffleSeed, 42);
+  });
+
+  it('G4 never copies argv into the output — it holds absolute runner paths', () => {
+    /*
+     * The seed is taken from `config.metadata.shuffleSeed`, which is where
+     * 1.64 hands it to reporters. argv is deliberately not echoed: the fixture's
+     * own argv contains an absolute home-directory path, and this report is
+     * published as evidence.
+     */
+    const { cwd, gateJson } = runWith('results-1_64-config.json');
+    const written = JSON.stringify(gateJson);
+    assert.doesNotMatch(written, /\/Users\//, 'no absolute path reaches gate.json');
+    assert.doesNotMatch(written, /node_modules/, 'nor a runner path');
+    assert.ok(!('argv' in gateJson), 'argv is never a field');
+    const md = fs.readFileSync(path.join(cwd, 'certusqa-gate', 'summary.md'), 'utf8');
+    assert.doesNotMatch(md, /\/Users\//, 'nor does the summary leak one');
+    assert.match(md, /shuffle seed `42`/, 'but the seed itself is printed');
+  });
+
+  it('G4 omits the seed when the run was not shuffled', () => {
+    const { gateJson } = runWith('results-all-pass.json');
+    assert.equal(gateJson.shuffleSeed, null);
+  });
+
+  it('the summary names the unrun projects for a human', () => {
+    const { cwd } = runWith('results-1_64-config.json');
+    const md = fs.readFileSync(path.join(cwd, 'certusqa-gate', 'summary.md'), 'utf8');
+    assert.match(md, /configured, not run/i);
+    assert.match(md, /firefox/);
+    assert.match(md, /webkit/);
+  });
+});
