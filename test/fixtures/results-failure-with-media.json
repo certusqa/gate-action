@@ -1,0 +1,46 @@
+{
+  "config": {
+    "version": "1.64.0"
+  },
+  "suites": [
+    {
+      "title": "checkout.spec.js",
+      "file": "tests/checkout.spec.js",
+      "specs": [
+        {
+          "title": "records a video on failure",
+          "file": "tests/checkout.spec.js",
+          "line": 11,
+          "tests": [
+            {
+              "projectName": "chromium",
+              "status": "unexpected",
+              "results": [
+                {
+                  "status": "failed",
+                  "duration": 2200,
+                  "error": {
+                    "message": "expect(received).toBe(expected)"
+                  },
+                  "attachments": [
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "test-results/records-a-video-on-failure/test-failed-1.png"
+                    },
+                    {
+                      "name": "video",
+                      "contentType": "video/webm",
+                      "path": "test-results/records-a-video-on-failure/video.webm"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "suites": []
+    }
+  ]
+}

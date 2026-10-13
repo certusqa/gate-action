@@ -113,6 +113,14 @@ function summarize(report) {
           attempts: results.map((r) => r.status),
           error: sanitizeError((last.error && last.error.message) || (results.find((r) => r.error) || {}).error?.message || null),
           durationMs: results.reduce((a, r) => a + (Number(r.duration) || 0), 0),
+          // Paths this result REFERENCES. Already in the report, and the only
+          // authoritative link between a file on disk and the test that
+          // produced it - see the `related` heuristic in proofArtifact.
+          attachments: results.flatMap((r) =>
+            (Array.isArray(r.attachments) ? r.attachments : [])
+              .map((a) => a && a.path)
+              .filter((pth) => typeof pth === 'string' && pth),
+          ),
         };
         if (status === 'expected') counts.passed += 1;
         else if (status === 'skipped') counts.skipped += 1;
@@ -154,14 +162,30 @@ function listMedia(dir, root) {
 /**
  * @param {{ status: string }} loaded
  * @param {{ failed: number, flaky: number, total: number }|null} summary
- * @param {string[]} media
+ * @param {string[]} failureMedia media referenced by a failed or flaky result
  * @returns {string}
  */
-function decide(loaded, summary, media) {
+function decide(loaded, summary, failureMedia) {
   if (loaded.status !== 'parsed' || !summary) return 'INSUFFICIENT_EVIDENCE';
   if (summary.total === 0) return 'INSUFFICIENT_EVIDENCE';
   if (summary.failed > 0) return 'BLOCK_DEPLOY';
-  if (summary.flaky > 0 || media.length > 0) return 'REVIEW_ARTIFACTS';
+  /*
+   * `failureMedia` is media a FAILED or FLAKY result referenced, not every
+   * file under the media dir. This parameter used to be the whole directory
+   * listing, so a leftover screenshot from an earlier run returned
+   * REVIEW_ARTIFACTS - and under GATE_STRICT a REVIEW blocks, so a clean run
+   * was blocked by somebody else's debris. Playwright 1.64 makes
+   * `video: 'on'` ordinary, which turns that from an annoyance into every
+   * green run carrying a webm.
+   *
+   * In practice this list is empty whenever it could matter: a failure already
+   * returned BLOCK above, a retry returns REVIEW on the line below, so the only
+   * run whose verdict media could decide is one where everything passed - and
+   * such a run has no failed or flaky result to reference anything. It stays a
+   * parameter because that argument is about today's verdict ladder, not about
+   * what the gate means.
+   */
+  if (summary.flaky > 0 || failureMedia.length > 0) return 'REVIEW_ARTIFACTS';
   return 'CLEAR_TO_DEPLOY';
 }
 
@@ -248,9 +272,42 @@ function renderSummary(gate, artifacts) {
     }
     lines.push('');
   }
-  if (gate.media.length) lines.push(`${gate.media.length} failure media file(s) under \`${gate.mediaDir}\`.`, '');
+  // Named apart on purpose: calling every file "failure media" is what made a
+  // green run look like it needed review.
+  if (gate.failureMedia && gate.failureMedia.length) {
+    lines.push(`${gate.failureMedia.length} failure media file(s) under \`${gate.mediaDir}\`, referenced by a failed or flaky test.`, '');
+  }
+  if (gate.recordedMedia && gate.recordedMedia.length) {
+    lines.push(`${gate.recordedMedia.length} further media file(s) under \`${gate.mediaDir}\` were recorded, not failure evidence.`, '');
+  }
   lines.push(`Evidence: \`${gate.outputDirRelative}/gate.json\`, \`proof/*.json\`. Classification of each failure as regression, flake or test defect is the CertusQA judge's job, not this action's.`);
   return `${lines.join('\n')}\n`;
+}
+
+/**
+ * Which files on disk a failed or flaky result actually points at.
+ *
+ * Attachment paths come from the runner and may be absolute; anything that
+ * resolves outside `cwd` is dropped rather than guessed at.
+ *
+ * @param {{cases: object[]}|null} summary
+ * @param {string[]} media repo-relative paths from listMedia
+ * @param {string} cwd
+ * @returns {Set<string>}
+ */
+function referencedMedia(summary, media, cwd) {
+  const out = new Set();
+  if (!summary || !Array.isArray(summary.cases)) return out;
+  const known = new Set(media);
+  for (const c of summary.cases) {
+    for (const raw of Array.isArray(c.attachments) ? c.attachments : []) {
+      const abs = path.isAbsolute(raw) ? raw : path.resolve(cwd, raw);
+      const rel = path.relative(cwd, abs);
+      if (!rel || rel.startsWith('..')) continue;
+      if (known.has(rel)) out.add(rel);
+    }
+  }
+  return out;
 }
 
 /**
@@ -264,7 +321,10 @@ function run(opts, cwd) {
   const loaded = loadReport(resultsPath);
   const summary = loaded.status === 'parsed' ? summarize(loaded.report) : null;
   const media = listMedia(mediaDir, cwd);
-  const verdict = decide(loaded, summary, media);
+  const referenced = referencedMedia(summary, media, cwd);
+  const failureMedia = media.filter((m) => referenced.has(m));
+  const recordedMedia = media.filter((m) => !referenced.has(m));
+  const verdict = decide(loaded, summary, failureMedia);
 
   let note = null;
   if (loaded.status === 'absent') {
@@ -276,6 +336,17 @@ function run(opts, cwd) {
   }
 
   const artifacts = summary ? summary.cases.map((c) => proofArtifact(c, verdict, opts.mode, media)) : [];
+  // Each artifact's media: what its own case referenced, union whatever the
+  // directory heuristic in proofArtifact found. Union because each catches
+  // what the other misses - attachments are authoritative but a reporter may
+  // record none, while the heuristic matches a directory Playwright named
+  // after the test.
+  if (summary) {
+    for (let i = 0; i < artifacts.length; i += 1) {
+      const own = [...referencedMedia({ cases: [summary.cases[i]] }, media, cwd)];
+      artifacts[i].evidence.media = [...new Set([...own, ...artifacts[i].evidence.media])].sort();
+    }
+  }
 
   const gate = {
     schemaVersion: SCHEMA_VERSION,
@@ -293,6 +364,8 @@ function run(opts, cwd) {
     failures: summary ? summary.cases.map((c) => ({ title: c.title, file: c.file, line: c.line, status: c.status, attempts: c.attempts, error: c.error })) : [],
     proofArtifacts: artifacts.map((a) => a.id),
     media,
+    failureMedia,
+    recordedMedia,
     mediaDir: path.relative(cwd, mediaDir) || '.',
     outputDirRelative: path.relative(cwd, outputDir) || '.',
   };

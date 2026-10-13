@@ -68,17 +68,80 @@ describe('decide — four verdicts, and a missing report is never green', () => 
     assert.equal(proofs.length, 1);
     assert.match(proofs[0], /^pa_flaky_/);
   });
-  it('REVIEW_ARTIFACTS when all passed but failure media is on disk', () => {
+  it('a green run stays green when media is merely present on disk', () => {
+    /*
+     * This test used to assert the opposite, and its own title gave the defect
+     * away: "when all passed but FAILURE media is on disk". If everything
+     * passed, none of it is failure media.
+     *
+     * `decide()` took any file matching png/webp/webm/zip anywhere under the
+     * media dir as grounds for REVIEW_ARTIFACTS — note the fixture directory
+     * is called `old-failure`, i.e. leftovers from an earlier run. Under
+     * GATE_STRICT a REVIEW blocks, so a fully green run was blocked by a stale
+     * screenshot. Playwright 1.64 makes `video: 'on'` ordinary, which turns a
+     * rare annoyance into the common case: every green run would carry a webm.
+     *
+     * Media is still found, still listed and still uploaded as evidence. What
+     * changed is that only media a FAILED or FLAKY result actually references
+     * can bear on the verdict — and a green run has no such result, which is
+     * why this one is now CLEAR.
+     */
     const { cwd, result } = runWith('results-all-pass.json');
     fs.mkdirSync(path.join(cwd, 'test-results', 'old-failure'), { recursive: true });
     fs.writeFileSync(path.join(cwd, 'test-results', 'old-failure', 'test-failed-1.png'), 'png');
-    // Playwright 1.62+ can write screenshots as WebP; a WebP failure shot must count as media too.
+    // Playwright 1.62+ can write screenshots as WebP; a WebP shot must still be LISTED.
     fs.writeFileSync(path.join(cwd, 'test-results', 'old-failure', 'test-failed-2.webp'), 'webp');
+    fs.writeFileSync(path.join(cwd, 'test-results', 'old-failure', 'video.webm'), 'webm');
     fs.writeFileSync(path.join(cwd, 'test-results', 'old-failure', 'notes.txt'), 'not media');
     const again = gate.run(gate.readOptions({ GATE_RESULTS: 'test-results/results.json', GATE_MEDIA_DIR: 'test-results' }), cwd);
-    assert.equal(result.gate.verdict, 'CLEAR_TO_DEPLOY');
-    assert.equal(again.gate.verdict, 'REVIEW_ARTIFACTS');
-    assert.deepEqual(again.gate.media.sort(), ['test-results/old-failure/test-failed-1.png', 'test-results/old-failure/test-failed-2.webp']);
+
+    assert.equal(result.gate.verdict, 'CLEAR_TO_DEPLOY', 'green with no media');
+    assert.equal(again.gate.verdict, 'CLEAR_TO_DEPLOY', 'and green with media lying around');
+
+    // still discovered, and still not the .txt
+    assert.deepEqual(again.gate.media.sort(), [
+      'test-results/old-failure/test-failed-1.png',
+      'test-results/old-failure/test-failed-2.webp',
+      'test-results/old-failure/video.webm',
+    ]);
+    // and it is named for what it is
+    assert.deepEqual(again.gate.failureMedia, [], 'no failed or flaky result references any of it');
+    assert.equal(again.gate.recordedMedia.length, 3, 'recorded, not failure evidence');
+  });
+
+  it('a failure BLOCKS and its media reaches the Proof Artifact', () => {
+    // The other half of the same change: media that a failing result does
+    // reference is failure evidence, must be named as such, and must travel
+    // with the artifact a human will read.
+    // Its own fixture: results-mixed attaches only error-context.md, so its
+    // png and webm are found by the directory heuristic and referenced by
+    // nothing. A real failing run attaches both, with paths.
+    const { cwd, gateJson } = runWith('results-failure-with-media.json');
+    const dir = path.join(cwd, 'test-results', 'records-a-video-on-failure');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'test-failed-1.png'), 'png');
+    fs.writeFileSync(path.join(dir, 'video.webm'), 'webm');
+    const again = gate.run(gate.readOptions({ GATE_RESULTS: 'test-results/results.json', GATE_MEDIA_DIR: 'test-results' }), cwd);
+
+    assert.equal(gateJson.verdict, 'BLOCK_DEPLOY');
+    assert.equal(again.gate.verdict, 'BLOCK_DEPLOY', 'media does not change a block');
+    assert.ok(again.gate.failureMedia.length > 0, 'the failure references its own evidence');
+    for (const m of again.gate.failureMedia) {
+      assert.ok(again.gate.media.includes(m), `${m} is also in the full listing`);
+      assert.ok(!again.gate.recordedMedia.includes(m), `${m} is not double-counted as merely recorded`);
+    }
+    const failing = again.artifacts.find((a) => a.id.startsWith('pa_unjudged_'));
+    assert.ok(failing, 'the failure has a Proof Artifact');
+    assert.ok(failing.evidence.media.length > 0, 'and the artifact carries its media');
+  });
+
+  it('a flaky run REVIEWS, with or without media', () => {
+    const { cwd, gateJson } = runWith('results-flaky.json');
+    assert.equal(gateJson.verdict, 'REVIEW_ARTIFACTS');
+    fs.mkdirSync(path.join(cwd, 'test-results', 'extra'), { recursive: true });
+    fs.writeFileSync(path.join(cwd, 'test-results', 'extra', 'video.webm'), 'webm');
+    const again = gate.run(gate.readOptions({ GATE_RESULTS: 'test-results/results.json', GATE_MEDIA_DIR: 'test-results' }), cwd);
+    assert.equal(again.gate.verdict, 'REVIEW_ARTIFACTS', 'the retry is the reason, not the webm');
   });
   it('INSUFFICIENT_EVIDENCE when the report is absent, corrupt, or has no tests', () => {
     assert.equal(runWith(null).gateJson.verdict, 'INSUFFICIENT_EVIDENCE');
