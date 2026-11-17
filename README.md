@@ -211,11 +211,14 @@ workflow pinned to `@v1` gets fixes without edits and never a breaking change. P
 
 No input or output was removed. `shuffleSeed` in `gate.json` is a string.
 
-Two verdicts can differ from v1.0.0 for the same run:
-- A green run that recorded video or screenshots is now `CLEAR_TO_DEPLOY`, where it was
-  `REVIEW_ARTIFACTS`.
-- A green run in which tests only wrote baselines is now `REVIEW_ARTIFACTS`, where it was
-  `CLEAR_TO_DEPLOY`. With `strict: true` that run now fails the job.
+One verdict differs from v1.0.0 for the same run: a green run that recorded video or screenshots
+is now `CLEAR_TO_DEPLOY`, where it was `REVIEW_ARTIFACTS` (and so no longer fails under
+`strict: true`).
+
+A green run in which tests only wrote baselines is `REVIEW_ARTIFACTS` in both versions. v1.0.0
+said so because the written image was media on disk; v1.1.0 says so because the report shows the
+write, and names the tests. The one exception is a `media-dir` that does not contain the snapshot
+output: there v1.0.0 returned `CLEAR_TO_DEPLOY`, and v1.1.0 returns `REVIEW_ARTIFACTS`.
 
 ## License
 
