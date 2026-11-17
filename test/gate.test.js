@@ -360,8 +360,41 @@ describe('G3/G4 — a CLEAR has to say what it cleared, and a shuffle has to be 
   });
 
   it('G4 reports the shuffle seed so a shuffled run can be reproduced', () => {
+    // This fixture was written by hand with a numeric seed; no real reporter
+    // writes one. It is kept to show a number is still read, as a string.
     const { gateJson } = runWith('results-1_64-config.json');
-    assert.equal(gateJson.shuffleSeed, 42);
+    assert.equal(gateJson.shuffleSeed, '42');
+  });
+
+  it('G4 reads the seed a real report carries: a string (Playwright 1.65.1, --shuffle 42)', () => {
+    // Captured from a real 1.65.1 run, machine paths replaced. Its metadata
+    // holds "shuffleSeed": "42" - the shape 1.64.0 writes too. The first cut
+    // of G4 read only numbers and printed nothing for this report.
+    const { cwd, gateJson } = runWith('results-1_65-shuffle.json');
+    assert.equal(gateJson.verdict, 'CLEAR_TO_DEPLOY');
+    assert.deepEqual(gateJson.summary, { passed: 4, failed: 0, flaky: 0, skipped: 2, total: 6 });
+    assert.equal(gateJson.shuffleSeed, '42');
+    const md = fs.readFileSync(path.join(cwd, 'certusqa-gate', 'summary.md'), 'utf8');
+    assert.match(md, /re-run with `--shuffle 42`/);
+    const written = JSON.stringify(gateJson) + md;
+    assert.doesNotMatch(written, /\/Users\//, 'the real argv path does not reach the output');
+    assert.doesNotMatch(written, /node_modules/);
+  });
+
+  it('G4 keeps the seed exactly as given - "007" is not 7', () => {
+    // Playwright orders by sha1(seed + testId), so the string is the seed.
+    assert.equal(gate.shuffleSeedOf({ metadata: { shuffleSeed: '007' } }), '007');
+    assert.equal(gate.shuffleSeedOf({ metadata: { shuffleSeed: 'abc' } }), 'abc', '--shuffle abc is accepted by Playwright');
+    assert.equal(gate.shuffleSeedOf({ metadata: { shuffleSeed: 7 } }), '7');
+  });
+
+  it('G4 drops a seed it cannot print safely rather than escaping it', () => {
+    assert.equal(gate.shuffleSeedOf({ metadata: { shuffleSeed: 'a`b' } }), null, 'it lands in Markdown backticks');
+    assert.equal(gate.shuffleSeedOf({ metadata: { shuffleSeed: 'x'.repeat(65) } }), null);
+    assert.equal(gate.shuffleSeedOf({ metadata: { shuffleSeed: '' } }), null);
+    assert.equal(gate.shuffleSeedOf({ metadata: { shuffleSeed: Infinity } }), null);
+    assert.equal(gate.shuffleSeedOf({ metadata: {} }), null);
+    assert.equal(gate.shuffleSeedOf(null), null);
   });
 
   it('G4 never copies argv into the output — it holds absolute runner paths', () => {

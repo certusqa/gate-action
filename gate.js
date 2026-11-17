@@ -305,7 +305,7 @@ function renderSummary(gate, artifacts) {
     }
     lines.push('');
   }
-  if (Number.isFinite(gate.shuffleSeed)) {
+  if (typeof gate.shuffleSeed === 'string' && gate.shuffleSeed) {
     lines.push(`Test order was shuffled: re-run with \`--shuffle ${gate.shuffleSeed}\` to reproduce it (shuffle seed \`${gate.shuffleSeed}\`).`, '');
   }
   if (gate.baselineWritten && gate.baselineWritten.length) {
@@ -378,12 +378,26 @@ function projectNames(list) {
  * was passed explicitly, and it also carries absolute runner paths, so it is
  * never read into anything this action publishes.
  *
+ * The seed is a STRING, and is kept as one. Playwright 1.64.0 and 1.65.1 both
+ * write `"shuffleSeed": "42"`, for an explicit `--shuffle 42` and for a random
+ * seed alike, and `--shuffle abc` is accepted too. The order is
+ * `sha1(seed + testId)`, so `"007"` and `"7"` are different orders: turning the
+ * seed into a number would print a seed that does not reproduce the run. The
+ * first cut of this function accepted only a number, matched a hand-written
+ * fixture, and so printed nothing for every real report.
+ *
+ * Only a short seed of letters, digits, `.`, `_` and `-` is echoed, because it
+ * lands in Markdown inside backticks. Anything else is dropped rather than
+ * escaped into something that would not reproduce the run either.
+ *
  * @param {object|null} config
- * @returns {number|null}
+ * @returns {string|null}
  */
 function shuffleSeedOf(config) {
   const raw = config && config.metadata && config.metadata.shuffleSeed;
-  return Number.isFinite(raw) ? Number(raw) : null;
+  // A number never comes from a real reporter, but a hand-built report may carry one.
+  const seed = typeof raw === 'number' && Number.isFinite(raw) ? String(raw) : raw;
+  return typeof seed === 'string' && /^[A-Za-z0-9._-]{1,64}$/.test(seed) ? seed : null;
 }
 
 /**
@@ -549,6 +563,6 @@ async function main() {
   if (process.env.GITHUB_OUTPUT) fs.appendFileSync(process.env.GITHUB_OUTPUT, `run-id=${runId}\nrun-url=${runUrl}\n`);
 }
 
-module.exports = { VERDICTS, readOptions, loadReport, sanitizeError, summarize, listMedia, decide, proofArtifact, renderSummary, run, writeOutputs };
+module.exports = { VERDICTS, readOptions, loadReport, sanitizeError, summarize, listMedia, decide, proofArtifact, renderSummary, shuffleSeedOf, run, writeOutputs };
 
 if (require.main === module) main().catch((err) => { console.error(`certusqa-gate: ${err && err.stack ? err.stack : err}`); process.exit(1); });

@@ -97,14 +97,21 @@ is the hosted part.
 Shuffle the order and let the gate tell you what broke:
 
 ```yaml
-- run: npx playwright test --shuffle $GITHUB_RUN_ID --reporter=json
+- run: npx playwright test --shuffle $GITHUB_RUN_ID --add-reporter json
+  env:
+    PLAYWRIGHT_JSON_OUTPUT_FILE: test-results/results.json
 - uses: certusqa/gate-action@v1
 ```
+
+Write the report to a file the gate reads. `--reporter=json` on its own prints the report to stdout
+and writes no file, so the gate would see no report at all.
 
 A test that only passes in its usual position is coupled to another test, and that is neither a
 regression nor a flake — it is a defect in the suite that will surface later as an unreproducible
 failure. The gate prints the seed it saw (`shuffleSeed` in `gate.json`, and in the summary) so a
-shuffled run can be reproduced exactly: re-run with the same `--shuffle <seed>`.
+shuffled run can be reproduced exactly: re-run with the same `--shuffle <seed>`. The seed is a
+string, kept exactly as Playwright recorded it: the order is derived from the seed's text, so
+`007` and `7` are different orders.
 
 The seed is read from the report's own metadata. The action never copies the runner's `argv` into
 any output, because it holds absolute paths from the machine that ran the tests.
