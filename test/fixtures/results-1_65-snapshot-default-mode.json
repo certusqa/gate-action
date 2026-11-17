@@ -1,0 +1,449 @@
+{
+  "config": {
+    "argv": [
+      "/opt/homebrew/Cellar/node/26.5.0/bin/node",
+      "/Users/someone/project/node_modules/.bin/playwright",
+      "test"
+    ],
+    "configFile": "/Users/someone/project/playwright.config.js",
+    "rootDir": "/Users/someone/project/tests",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "/Users/someone/project/r-nobase",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/Users/someone/project/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      },
+      {
+        "outputDir": "/Users/someone/project/r-nobase",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "/Users/someone/project/tests",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 30000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "/Users/someone/project/r-nobase",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "chromium",
+        "testDir": "/Users/someone/project/tests",
+        "snapshotDir": "/Users/someone/project/tests",
+        "testIgnore": [],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 30000,
+        "use": {
+          "video": "on",
+          "screenshot": "only-on-failure",
+          "trace": "retain-on-failure",
+          "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/159.0.8154.6 Safari/537.36",
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          },
+          "screen": {
+            "width": 1920,
+            "height": 1080
+          },
+          "deviceScaleFactor": 1,
+          "isMobile": false,
+          "hasTouch": false,
+          "defaultBrowserType": "chromium"
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": "chromium"
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/results.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.65.1",
+    "workers": 5,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "probe.spec.js",
+      "file": "probe.spec.js",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "clicks the button",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 376,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-17T18:21:21.438Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "video",
+                      "contentType": "video/webm",
+                      "path": "/Users/someone/project/test-results/probe-clicks-the-button-chromium/video.webm"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1c6003fd00720efdacd7-9079673f9c639964c245",
+          "file": "probe.spec.js",
+          "line": 10,
+          "column": 1
+        },
+        {
+          "title": "shows the heading",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 127,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-17T18:21:22.099Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "video",
+                      "contentType": "video/webm",
+                      "path": "/Users/someone/project/test-results/probe-shows-the-heading-chromium/video.webm"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1c6003fd00720efdacd7-c93a4f2fe8e22ae0c34a",
+          "file": "probe.spec.js",
+          "line": 15,
+          "column": 1
+        },
+        {
+          "title": "checkout total",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 106,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-17T18:21:22.231Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "video",
+                      "contentType": "video/webm",
+                      "path": "/Users/someone/project/test-results/probe-checkout-total-chromium/video.webm"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1c6003fd00720efdacd7-2deae8ec25b36763d71f",
+          "file": "probe.spec.js",
+          "line": 19,
+          "column": 1
+        },
+        {
+          "title": "retry-sensitive",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 105,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-17T18:21:22.343Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "video",
+                      "contentType": "video/webm",
+                      "path": "/Users/someone/project/test-results/probe-retry-sensitive-chromium/video.webm"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "1c6003fd00720efdacd7-257d74979ac29f67333f",
+          "file": "probe.spec.js",
+          "line": 24,
+          "column": 1
+        },
+        {
+          "title": "visual baseline",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 247,
+                  "error": {
+                    "message": "Error: A snapshot doesn't exist at /Users/someone/project/tests/probe.spec.js-snapshots/probe-chromium-darwin.png, writing actual.",
+                    "stack": "Error: A snapshot doesn't exist at /Users/someone/project/tests/probe.spec.js-snapshots/probe-chromium-darwin.png, writing actual.\n    at /Users/someone/project/tests/probe.spec.js:32:3",
+                    "location": {
+                      "file": "/Users/someone/project/tests/probe.spec.js",
+                      "column": 3,
+                      "line": 32
+                    },
+                    "snippet": "  30 | test('visual baseline', async ({ page }) => {\n  31 |   test.skip(MODE !== 'baseline', 'only in baseline mode');\n> 32 |   await expect(page).toHaveScreenshot('probe.png');\n     |   ^\n  33 | });\n  34 |\n  35 | test('described skip', async () => {"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/someone/project/tests/probe.spec.js",
+                        "column": 3,
+                        "line": 32
+                      },
+                      "message": "Error: A snapshot doesn't exist at /Users/someone/project/tests/probe.spec.js-snapshots/probe-chromium-darwin.png, writing actual.\n\n  30 | test('visual baseline', async ({ page }) => {\n  31 |   test.skip(MODE !== 'baseline', 'only in baseline mode');\n> 32 |   await expect(page).toHaveScreenshot('probe.png');\n     |   ^\n  33 | });\n  34 |\n  35 | test('described skip', async () => {\n    at /Users/someone/project/tests/probe.spec.js:32:3"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-17T18:21:22.451Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "probe-expected.png",
+                      "contentType": "image/png",
+                      "path": "/Users/someone/project/tests/probe.spec.js-snapshots/probe-chromium-darwin.png"
+                    },
+                    {
+                      "name": "probe-actual.png",
+                      "contentType": "image/png",
+                      "path": "/Users/someone/project/test-results/probe-visual-baseline-chromium/probe-actual.png"
+                    },
+                    {
+                      "name": "screenshot",
+                      "contentType": "image/png",
+                      "path": "/Users/someone/project/test-results/probe-visual-baseline-chromium/test-failed-1.png"
+                    },
+                    {
+                      "name": "video",
+                      "contentType": "video/webm",
+                      "path": "/Users/someone/project/test-results/probe-visual-baseline-chromium/video.webm"
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "/Users/someone/project/test-results/probe-visual-baseline-chromium/error-context.md"
+                    },
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/Users/someone/project/test-results/probe-visual-baseline-chromium/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/Users/someone/project/tests/probe.spec.js",
+                    "column": 3,
+                    "line": 32
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "1c6003fd00720efdacd7-21a3fead978ad11c633b",
+          "file": "probe.spec.js",
+          "line": 30,
+          "column": 1
+        },
+        {
+          "title": "described skip",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 30000,
+              "annotations": [
+                {
+                  "type": "skip",
+                  "description": "1.65 description-only skip",
+                  "location": {
+                    "file": "/Users/someone/project/tests/probe.spec.js",
+                    "line": 36,
+                    "column": 8
+                  }
+                }
+              ],
+              "expectedStatus": "skipped",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "skipped",
+                  "duration": 120,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-11-17T18:21:22.866Z",
+                  "annotations": [
+                    {
+                      "type": "skip",
+                      "description": "1.65 description-only skip",
+                      "location": {
+                        "file": "/Users/someone/project/tests/probe.spec.js",
+                        "line": 36,
+                        "column": 8
+                      }
+                    }
+                  ],
+                  "attachments": [
+                    {
+                      "name": "video",
+                      "contentType": "video/webm",
+                      "path": "/Users/someone/project/test-results/probe-described-skip-chromium/video.webm"
+                    }
+                  ]
+                }
+              ],
+              "status": "skipped"
+            }
+          ],
+          "id": "1c6003fd00720efdacd7-48417fef18f1a7a5fb26",
+          "file": "probe.spec.js",
+          "line": 35,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-11-17T18:21:21.283Z",
+    "duration": 1826.484,
+    "expected": 4,
+    "skipped": 1,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

@@ -313,7 +313,7 @@ function renderSummary(gate, artifacts) {
       `### ${gate.baselineWritten.length} test(s) compared nothing`,
       '',
       gate.updateSnapshots
-        ? `The run used \`updateSnapshots: ${gate.updateSnapshots}\` (Playwright's default is \`missing\`), so a baseline that was not on disk is written rather than failed. These tests passed without comparing anything — they recorded a baseline for next time:`
+        ? `The run used \`updateSnapshots: ${gate.updateSnapshots}\`, in which a baseline that was not on disk is written rather than failed (since Playwright 1.64; left unset, the mode is \`default\` and the test fails). These tests passed without comparing anything — they recorded a baseline for next time:`
         : 'These tests passed carrying a `*-actual` attachment, which means a baseline was written rather than compared. They proved nothing about what they were meant to check:',
       '',
       ...gate.baselineWritten.map((t) => `- ${t}`),
@@ -432,14 +432,17 @@ function run(opts, cwd) {
    * `updateSnapshots` is CONTEXT, not the trigger.
    *
    * The first cut of this gated the finding on the mode being one of
-   * missing/all/changed — and every real report in test/fixtures has
-   * `updateSnapshots: "missing"` with no flag in its `argv`, on Playwright
-   * 1.61.1. It is the resolved DEFAULT the reporter serialises, not an opt-in,
-   * so gating on it would have flagged every run ever.
+   * missing/all/changed — and every 1.61.1 report in test/fixtures has
+   * `updateSnapshots: "missing"` with no flag in its `argv`: before 1.64 that
+   * was the resolved default, so gating on it would have flagged every run.
    *
-   * That also makes 1.64's change bigger than it reads: turning a missing
-   * baseline from a failure into a pass applies to everyone by default, not to
-   * people who passed a flag.
+   * A correction (2026-11-17, measured on 1.64.0 and 1.65.1): 1.64 split the
+   * two. An unset mode now serialises as `"default"` and still FAILS a missing
+   * baseline (`test/fixtures/results-1_65-snapshot-default-mode.json`); only an
+   * explicit `missing` passes one (`results-1_65-snapshot-missing-mode.json`).
+   * This comment used to say 1.64's change applied to everyone by default. It
+   * applies to everyone who sets `missing`, which is what teams do to generate
+   * and verify baselines in one CI run.
    *
    * The evidence is the attachment. A PASSING test carrying `*-actual.*` means
    * a baseline was written rather than compared — Playwright attaches

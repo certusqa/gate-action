@@ -465,3 +465,36 @@ describe('1.65 onlyFailures — a report with the passes left out', () => {
     assert.equal(gateJson.note, null);
   });
 });
+
+describe('G10 — what updateSnapshots really defaults to (real 1.65.1 reports)', () => {
+  /*
+   * The README and the summary said Playwright's default is `missing`. Measured on 1.64.0 and
+   * 1.65.1 (2026-11-17): left unset, the mode serialises as `default` and a missing baseline FAILS
+   * the test; only an explicit `missing` passes it. Both fixtures are the same probe suite: four
+   * passing tests, a visual test with no baseline on disk, and a skipped one.
+   */
+  it('unset mode ("default"): the missing baseline is a failed test, not a written one', () => {
+    const { gateJson } = runWith('results-1_65-snapshot-default-mode.json');
+    assert.equal(gateJson.updateSnapshots, 'default');
+    assert.equal(gateJson.verdict, 'BLOCK_DEPLOY');
+    assert.equal(gateJson.summary.failed, 1);
+    assert.deepEqual(gateJson.baselineWritten, [], 'a failed test wrote nothing that passed');
+  });
+
+  it('explicit `missing`: the same test passes having written its baseline, and is named', () => {
+    const { cwd, gateJson } = runWith('results-1_65-snapshot-missing-mode.json');
+    assert.equal(gateJson.updateSnapshots, 'missing');
+    assert.equal(gateJson.verdict, 'REVIEW_ARTIFACTS');
+    assert.deepEqual(gateJson.baselineWritten, ['visual baseline']);
+    const md = fs.readFileSync(path.join(cwd, 'certusqa-gate', 'summary.md'), 'utf8');
+    assert.match(md, /The run used `updateSnapshots: missing`, in which a baseline that was not on disk is written rather than failed/);
+    assert.match(md, /left unset, the mode is `default` and the test fails/);
+    assert.doesNotMatch(md, /default is `missing`/, 'the false claim is gone');
+  });
+
+  it('the README no longer says the default is `missing`', () => {
+    const readme = fs.readFileSync(path.join(__dirname, '..', 'README.md'), 'utf8');
+    assert.doesNotMatch(readme, /defaults to `missing`/);
+    assert.match(readme, /Left unset, the mode is called `default` and still fails such a test/);
+  });
+});

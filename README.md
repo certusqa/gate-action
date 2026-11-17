@@ -60,9 +60,11 @@ as recorded, not failure evidence.
 
 ### "Your CI was green, and these tests compared nothing"
 
-Playwright's `updateSnapshots` defaults to `missing`, and from 1.64 a screenshot assertion with no
-baseline on disk **passes**: it writes the baseline and moves on. Nothing annotates it, so a suite
-can report all-green while some of its tests compared nothing at all.
+From Playwright 1.64, a run with `--update-snapshots=missing` (or `updateSnapshots: 'missing'` in
+the config) makes a screenshot assertion with no baseline on disk **pass**: it writes the baseline
+and moves on. Left unset, the mode is called `default` and still fails such a test. Teams set
+`missing` to generate and verify baselines in one CI run, and nothing annotates the tests that only
+wrote one, so a suite can report all-green while some of its tests compared nothing at all.
 
 The gate names them. A passing test carrying a `*-actual.*` attachment wrote a baseline rather than
 comparing one — Playwright attaches expected/actual on a comparison *failure*, so on a pass it is
