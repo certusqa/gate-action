@@ -401,6 +401,20 @@ function shuffleSeedOf(config) {
 }
 
 /**
+ * Whether the config declares the built-in json reporter with `onlyFailures`
+ * (new in Playwright 1.65). Read from `config.reporter`, which the json
+ * reporter serialises as `[name, options]` pairs. The env-variable form,
+ * PLAYWRIGHT_JSON_ONLY_FAILURES, is not recorded there and cannot be seen.
+ *
+ * @param {object|null} config
+ * @returns {boolean}
+ */
+function jsonOnlyFailures(config) {
+  const list = config && Array.isArray(config.reporter) ? config.reporter : [];
+  return list.some((r) => Array.isArray(r) && r[0] === 'json' && !!r[1] && r[1].onlyFailures === true);
+}
+
+/**
  * @param {ReturnType<typeof readOptions>} opts
  * @param {string} cwd
  */
@@ -451,6 +465,7 @@ function run(opts, cwd) {
   const updateSnapshots = typeof rawMode === 'string' && rawMode ? rawMode : null;
   const baselineWritten = summary ? summary.baselineWritten : [];
   const verdict = decide(loaded, summary, failureMedia, baselineWritten);
+  const onlyFailures = jsonOnlyFailures(config);
 
   let note = null;
   if (loaded.status === 'absent') {
@@ -458,7 +473,21 @@ function run(opts, cwd) {
   } else if (loaded.status === 'unparseable') {
     note = `Report at ${path.relative(cwd, resultsPath)} could not be parsed (${loaded.error}). A corrupt or half-written report is not a green run.`;
   } else if (summary && summary.total === 0) {
-    note = 'The report parsed but contains no tests. Nothing ran, so nothing is proven.';
+    /*
+     * Since 1.65 an empty report does not mean nothing ran. The json reporter's
+     * `onlyFailures` keeps only unexpected, flaky and interrupted tests, and on
+     * a green run it writes `suites: []` with every `stats` count at 0 - the
+     * same bytes as a run of nothing. The verdict stays INSUFFICIENT_EVIDENCE
+     * either way: a report with the passes left out cannot prove a pass. Only
+     * the explanation differs, and the env-variable form
+     * (PLAYWRIGHT_JSON_ONLY_FAILURES) leaves no trace in the report, so the
+     * fallback names it as a possibility rather than claiming nothing ran.
+     */
+    note = onlyFailures
+      ? 'The report has no tests because its json reporter ran with onlyFailures: true, which leaves passing tests out. Nothing in it proves a pass. Remove onlyFailures from the json reporter the gate reads.'
+      : 'The report parsed but contains no tests. Either nothing ran, or the json reporter kept only failures (Playwright 1.65 onlyFailures, or PLAYWRIGHT_JSON_ONLY_FAILURES=1). Either way nothing in it proves a pass.';
+  } else if (summary && onlyFailures) {
+    note = 'The json reporter ran with onlyFailures: true, so passing tests are not in this report: the counts cover failed and flaky tests only. Remove onlyFailures from the json reporter the gate reads.';
   }
 
   const artifacts = summary ? summary.cases.map((c) => proofArtifact(c, verdict, opts.mode, media)) : [];

@@ -32,6 +32,12 @@ reporter: [['list'], ['json', { outputFile: 'test-results/results.json' }]],
 If your config already has a JSON reporter, keep it and point `results` at its `outputFile`;
 the environment variable above overrides every JSON reporter's output path when set.
 
+Do not set Playwright 1.65's `onlyFailures` on the JSON reporter the gate reads, nor
+`PLAYWRIGHT_JSON_ONLY_FAILURES`. It leaves passing tests out of the report, so a green run
+arrives empty and the gate returns `INSUFFICIENT_EVIDENCE`: a report without the passes cannot
+prove a pass. When the option is in your config, the summary says so; the environment-variable
+form leaves no trace in the report, so the gate can only name it as a possibility.
+
 ## The four verdicts
 
 | Verdict | When | Enforce mode |

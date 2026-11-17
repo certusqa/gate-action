@@ -427,3 +427,41 @@ describe('G3/G4 — a CLEAR has to say what it cleared, and a shuffle has to be 
     assert.match(md, /webkit/);
   });
 });
+
+describe('1.65 onlyFailures — a report with the passes left out', () => {
+  /*
+   * Both fixtures are real Playwright 1.65.1 reports, machine paths replaced,
+   * from a config with ['json', { onlyFailures: true }]. The suite was 4 passed
+   * and 2 skipped in the green run, and 3 passed, 1 failed and 2 skipped in the
+   * failed one; the report keeps only the failure.
+   */
+  it('a green run reads as empty: still INSUFFICIENT_EVIDENCE, but the note says why', () => {
+    const { gateJson } = runWith('results-1_65-only-failures-green.json');
+    assert.equal(gateJson.verdict, 'INSUFFICIENT_EVIDENCE', 'a report without the passes cannot prove a pass');
+    assert.equal(gateJson.summary.total, 0);
+    assert.match(gateJson.note, /onlyFailures: true/);
+    assert.doesNotMatch(gateJson.note, /Nothing ran/, 'tests did run; saying otherwise is false');
+  });
+
+  it('a failed run still blocks, and the note says the counts cover failures only', () => {
+    const { gateJson, proofs } = runWith('results-1_65-only-failures-failed.json');
+    assert.equal(gateJson.verdict, 'BLOCK_DEPLOY');
+    assert.deepEqual(gateJson.summary, { passed: 0, failed: 1, flaky: 0, skipped: 0, total: 1 });
+    assert.match(gateJson.note, /counts cover failed and flaky tests only/);
+    assert.equal(proofs.length, 1);
+  });
+
+  it('an empty report with no onlyFailures in its config names both possibilities', () => {
+    // PLAYWRIGHT_JSON_ONLY_FAILURES=1 is not recorded in config.reporter, so an
+    // empty report cannot tell "nothing ran" from "only failures were kept".
+    const { gateJson } = runWith('results-empty.json');
+    assert.equal(gateJson.verdict, 'INSUFFICIENT_EVIDENCE');
+    assert.match(gateJson.note, /contains no tests/);
+    assert.match(gateJson.note, /PLAYWRIGHT_JSON_ONLY_FAILURES/);
+  });
+
+  it('a normal run carries no onlyFailures note', () => {
+    const { gateJson } = runWith('results-1_65-shuffle.json');
+    assert.equal(gateJson.note, null);
+  });
+});
