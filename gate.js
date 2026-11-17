@@ -37,6 +37,9 @@ const path = require('path');
 const SCHEMA_VERSION = '1.0.0';
 const PROOF_SCHEMA_VERSION = '1.1.0';
 const ERROR_MESSAGE_MAX = 400;
+const SKIP_REASON_MAX = 160;
+/** At most this many skipped tests are listed by name; the rest are counted. */
+const SKIPPED_LISTED_MAX = 20;
 const VERDICTS = ['CLEAR_TO_DEPLOY', 'REVIEW_ARTIFACTS', 'BLOCK_DEPLOY', 'INSUFFICIENT_EVIDENCE'];
 
 /**
@@ -88,6 +91,27 @@ function sanitizeError(message) {
 }
 
 /**
+ * The reason a skipped test gives: the description of its `skip` or `fixme`
+ * annotation, test-level first, then the last result's. Sanitised like an
+ * error message and shorter. Null when the author gave none (a bare
+ * `test.skip()`, or a test skipped because its serial group failed).
+ * @param {{ annotations?: unknown }} t
+ * @param {Array<{ annotations?: unknown }>} results
+ * @returns {string|null}
+ */
+function skipReason(t, results) {
+  const last = results[results.length - 1] || {};
+  for (const list of [t.annotations, last.annotations]) {
+    for (const a of Array.isArray(list) ? list : []) {
+      if (!a || (a.type !== 'skip' && a.type !== 'fixme')) continue;
+      const text = sanitizeError(a.description);
+      if (text) return text.length > SKIP_REASON_MAX ? `${text.slice(0, SKIP_REASON_MAX)}…` : text;
+    }
+  }
+  return null;
+}
+
+/**
  * Walk the Playwright JSON reporter tree.
  * test.status is the reporter's own verdict: expected | unexpected | flaky | skipped.
  * @param {object} report
@@ -111,6 +135,16 @@ function summarize(report) {
    */
   /** @type {string[]} */
   const baselineWritten = [];
+  /*
+   * Skipped tests and the reason their author gave. Playwright 1.65 made
+   * `test.skip('reason')` official and records the description as an
+   * annotation, so a CLEAR can say WHICH tests it did not run and why, not
+   * just how many. Only the description is read: an annotation also carries
+   * `location.file`, an absolute runner path, which never reaches an output.
+   * Rendered in the summary only; gate.json keeps its schema.
+   */
+  /** @type {Array<{title: string, reason: string|null}>} */
+  const skippedTests = [];
 
   function walk(suite, trail) {
     const here = suite.title ? [...trail, suite.title] : trail;
@@ -141,7 +175,10 @@ function summarize(report) {
           counts.passed += 1;
           if (entry.attachments.some((pth) => /-actual\.[^./\\]+$/i.test(pth))) baselineWritten.push(entry.title);
         }
-        else if (status === 'skipped') counts.skipped += 1;
+        else if (status === 'skipped') {
+          counts.skipped += 1;
+          skippedTests.push({ title: entry.title, reason: skipReason(t, results) });
+        }
         else if (status === 'flaky') {
           counts.flaky += 1;
           entry.error = sanitizeError((results.find((r) => r.error) || {}).error?.message || null);
@@ -156,7 +193,7 @@ function summarize(report) {
   }
   for (const s of report.suites || []) walk(s, []);
   const total = counts.passed + counts.failed + counts.flaky + counts.skipped;
-  return { ...counts, total, cases, baselineWritten };
+  return { ...counts, total, cases, baselineWritten, skippedTests };
 }
 
 /**
@@ -271,8 +308,9 @@ function proofArtifact(c, verdict, mode, media) {
 /**
  * @param {object} gate
  * @param {object[]} artifacts
+ * @param {{ skippedTests?: Array<{title: string, reason: string|null}> }} [extras] summary-only detail, not in gate.json
  */
-function renderSummary(gate, artifacts) {
+function renderSummary(gate, artifacts, extras = {}) {
   const s = gate.summary;
   const icon = { CLEAR_TO_DEPLOY: '🟢', REVIEW_ARTIFACTS: '🟡', BLOCK_DEPLOY: '🔴', INSUFFICIENT_EVIDENCE: '⚪' }[gate.verdict];
   const lines = [];
@@ -294,6 +332,16 @@ function renderSummary(gate, artifacts) {
       `**Configured, not run:** ${gate.projectsNotRun.join(', ')} — this verdict covers ${(gate.projectsRun || []).join(', ') || 'the default project'} only.`,
       '',
     );
+  }
+  // Under the counts, because it qualifies the Skipped column: which tests, and why.
+  const skipped = Array.isArray(extras && extras.skippedTests) ? extras.skippedTests : [];
+  if (skipped.length) {
+    lines.push(`**Skipped (${skipped.length}):**`, '');
+    for (const sk of skipped.slice(0, SKIPPED_LISTED_MAX)) {
+      lines.push(`- ${sk.title} — ${sk.reason ? sk.reason : 'no reason given'}`);
+    }
+    if (skipped.length > SKIPPED_LISTED_MAX) lines.push(`- …and ${skipped.length - SKIPPED_LISTED_MAX} more`);
+    lines.push('');
   }
   if (gate.note) lines.push(`> ${gate.note}`, '');
   if (artifacts.length) {
@@ -534,7 +582,7 @@ function run(opts, cwd) {
     outputDirRelative: path.relative(cwd, outputDir) || '.',
   };
 
-  return { gate, artifacts, outputDir, summaryMarkdown: renderSummary(gate, artifacts) };
+  return { gate, artifacts, outputDir, summaryMarkdown: renderSummary(gate, artifacts, { skippedTests: summary ? summary.skippedTests : [] }) };
 }
 
 /**

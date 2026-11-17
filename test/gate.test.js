@@ -498,3 +498,54 @@ describe('G10 — what updateSnapshots really defaults to (real 1.65.1 reports)'
     assert.match(readme, /Left unset, the mode is called `default` and still fails such a test/);
   });
 });
+
+describe('G8 — a CLEAR names what it skipped, and why (Playwright 1.65 test.skip(\'reason\'))', () => {
+  it('lists each skipped test with the description its author gave', () => {
+    // Real 1.65.1 report: one conditional skip and one description-only skip.
+    const { cwd, gateJson } = runWith('results-1_65-shuffle.json');
+    assert.equal(gateJson.verdict, 'CLEAR_TO_DEPLOY');
+    const md = fs.readFileSync(path.join(cwd, 'certusqa-gate', 'summary.md'), 'utf8');
+    assert.match(md, /\*\*Skipped \(2\):\*\*/);
+    assert.match(md, /^- visual baseline — only in baseline mode$/m);
+    assert.match(md, /^- described skip — 1\.65 description-only skip$/m);
+  });
+
+  it('never copies the annotation location, which is an absolute runner path', () => {
+    const { cwd, gateJson } = runWith('results-1_65-shuffle.json');
+    const md = fs.readFileSync(path.join(cwd, 'certusqa-gate', 'summary.md'), 'utf8');
+    assert.doesNotMatch(md + JSON.stringify(gateJson), /\/Users\/someone/);
+  });
+
+  it('says "no reason given" when the author gave none', () => {
+    // A 1.61.1-era fixture: the skip annotation has a location and no description.
+    const { cwd } = runWith('results-mixed.json');
+    const md = fs.readFileSync(path.join(cwd, 'certusqa-gate', 'summary.md'), 'utf8');
+    assert.match(md, /^- .*mobile flow — no reason given$/m);
+  });
+
+  it('keeps gate.json unchanged: the list is summary-only', () => {
+    const { gateJson } = runWith('results-1_65-shuffle.json');
+    assert.ok(!Object.keys(gateJson).some((k) => /skipped/i.test(k) && k !== 'summary'), 'no new skipped field in gate.json');
+    assert.equal(gateJson.summary.skipped, 2, 'the count is where it always was');
+  });
+
+  it('lists at most 20 by name and counts the rest', () => {
+    const skippedTests = Array.from({ length: 23 }, (_, i) => ({ title: `t${i}`, reason: i % 2 ? 'why' : null }));
+    const md = gate.renderSummary(
+      { verdict: 'CLEAR_TO_DEPLOY', mode: 'report-only', reportStatus: 'parsed', summary: { passed: 1, failed: 0, flaky: 0, skipped: 23, total: 24 }, outputDirRelative: 'x', mediaDir: 'y' },
+      [],
+      { skippedTests },
+    );
+    assert.match(md, /^- t19 — why$/m);
+    assert.doesNotMatch(md, /^- t20 /m);
+    assert.match(md, /^- …and 3 more$/m);
+  });
+
+  it('a summary without the list (older callers) renders as before', () => {
+    const md = gate.renderSummary(
+      { verdict: 'CLEAR_TO_DEPLOY', mode: 'report-only', reportStatus: 'parsed', summary: { passed: 1, failed: 0, flaky: 0, skipped: 0, total: 1 }, outputDirRelative: 'x', mediaDir: 'y' },
+      [],
+    );
+    assert.doesNotMatch(md, /Skipped \(/);
+  });
+});
