@@ -199,7 +199,23 @@ outputs. If the badge is green, the four rows in the table above are true today.
 
 `certusqa/gate-action@v1` is a moving tag that always points at the latest `v1.x.y` release, so a
 workflow pinned to `@v1` gets fixes without edits and never a breaking change. Pin to a full tag
-(`@v1.0.0`) or a commit SHA if you want nothing to move.
+(`@v1.1.0`) or a commit SHA if you want nothing to move.
+
+**v1.1.0** (2026-11-18) is everything this README describes beyond the four verdicts of v1.0.0:
+- only media a failed or flaky test references counts as failure media;
+- tests that wrote a baseline instead of comparing one are named;
+- projects configured but not run are named;
+- the shuffle seed is printed, as the string Playwright recorded;
+- an empty or failures-only report (`onlyFailures`) is explained;
+- skipped tests are listed with their reasons.
+
+No input or output was removed. `shuffleSeed` in `gate.json` is a string.
+
+Two verdicts can differ from v1.0.0 for the same run:
+- A green run that recorded video or screenshots is now `CLEAR_TO_DEPLOY`, where it was
+  `REVIEW_ARTIFACTS`.
+- A green run in which tests only wrote baselines is now `REVIEW_ARTIFACTS`, where it was
+  `CLEAR_TO_DEPLOY`. With `strict: true` that run now fails the job.
 
 ## License
 

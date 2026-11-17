@@ -23,7 +23,7 @@ const path = require('path');
 
 const subtle = webcrypto.subtle;
 const enc = new TextEncoder();
-const ACTION_VERSION = '1.0.0';
+const ACTION_VERSION = '1.1.0';
 const DEFAULT_URL = 'https://app.certusqa.com/api/v1/runs';
 
 function hex(buf) {
